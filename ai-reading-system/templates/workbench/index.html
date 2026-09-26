@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 阅读执行系统</title>
+<style>
+  :root{
+    --bg:#FAFAFC; --card:#FFFFFF; --ink:#1F2937; --sub:#6B7280; --line:#ECECF1;
+    --orange:#F59E0B; --blue:#3B82F6; --green:#10B981; --rose:#FE2C55; --purple:#8B5CF6;
+    --grad:linear-gradient(120deg,#F59E0B 0%,#F97316 35%,#3B82F6 100%);
+    --shadow:0 8px 28px rgba(59,130,246,.10), 0 2px 8px rgba(17,24,39,.05);
+    --shadow-sm:0 3px 12px rgba(17,24,39,.07);
+    --r:18px; --r-sm:12px;
+    --todo:#E5E7EB; --todo-t:#9CA3AF; --doing:#3B82F6; --done:#10B981;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--ink);
+    font-family:"Inter","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.55}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#D6D9E0;border-radius:8px}
+
+  /* ---------- Header ---------- */
+  header.top{background:var(--grad);color:#fff;padding:26px 30px 22px;position:relative;overflow:hidden}
+  header.top::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;
+    background:radial-gradient(circle,rgba(255,255,255,.25),transparent 70%);border-radius:50%}
+  .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;position:relative;z-index:1}
+  .brand h1{font-size:25px;font-weight:800;letter-spacing:.5px}
+  .brand p{opacity:.92;font-size:13.5px;margin-top:4px}
+  .top-actions{display:flex;gap:9px;flex-wrap:wrap}
+  .btn{border:none;cursor:pointer;font-weight:700;font-size:13px;border-radius:11px;padding:9px 14px;
+    transition:.15s;font-family:inherit}
+  .btn-ghost{background:rgba(255,255,255,.18);color:#fff}
+  .btn-ghost:hover{background:rgba(255,255,255,.32)}
+  .btn-light{background:#fff;color:var(--blue)}
+  .btn-light:hover{filter:brightness(.96)}
+  .btn-primary{background:var(--blue);color:#fff}
+  .btn-primary:hover{filter:brightness(1.07)}
+  .btn-danger{background:var(--rose);color:#fff}
+
+  /* ---------- KPI ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;
+    padding:0 30px;margin:-22px 0 8px;position:relative;z-index:2}
+  .kpi{background:var(--card);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow)}
+  .kpi .num{font-size:30px;font-weight:850;line-height:1}
+  .kpi .lbl{font-size:12.5px;color:var(--sub);margin-top:6px}
+  .kpi .num.g{color:var(--green)} .kpi .num.b{color:var(--blue)} .kpi .num.o{color:var(--orange)}
+
+  /* ---------- Distribution ---------- */
+  .section-wrap{padding:18px 30px 6px}
+  .sec-title{font-size:16px;font-weight:800;margin:8px 0 12px;display:flex;align-items:center;gap:8px}
+  .sec-title .bar{width:5px;height:18px;background:var(--grad);border-radius:3px}
+  .dist{background:var(--card);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);
+    display:grid;grid-template-columns:repeat(8,1fr);gap:12px}
+  .dist .col{text-align:center}
+  .dist .stack{height:120px;display:flex;flex-direction:column-reverse;justify-content:flex-start;
+    background:#F3F4F8;border-radius:9px;overflow:hidden;position:relative}
+  .dist .fill{background:var(--blue);width:100%;transition:.3s}
+  .dist .cnt{font-size:22px;font-weight:850;margin-top:8px}
+  .dist .stage{font-size:11.5px;color:var(--sub);margin-top:3px;line-height:1.3}
+  .dist .stage b{color:var(--ink)}
+  @media(max-width:720px){.dist{grid-template-columns:repeat(4,1fr)}}
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 30px 6px}
+  .toolbar input,.toolbar select{border:1px solid var(--line);background:#fff;border-radius:10px;
+    padding:8px 12px;font-size:13px;font-family:inherit;color:var(--ink)}
+  .toolbar input{flex:1;min-width:180px}
+  .chip{font-size:12.5px;padding:7px 12px;border-radius:20px;border:1px solid var(--line);
+    background:#fff;cursor:pointer;color:var(--sub);font-weight:600}
+  .chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+  /* ---------- Book grid ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:16px;padding:16px 30px 60px}
+  .book{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow-sm);cursor:pointer;
+    overflow:hidden;transition:.18s;border:1px solid transparent;display:flex;flex-direction:column}
+  .book:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:#E6E9F2}
+  .book .cover{height:74px;display:flex;align-items:center;gap:10px;padding:0 16px;color:#fff;position:relative}
+  .book .cover .emoji{font-size:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.2))}
+  .book .cover .t{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .book .body{padding:12px 14px 14px;flex:1;display:flex;flex-direction:column}
+  .book .author{font-size:12px;color:var(--sub);margin-bottom:8px}
+  .seg{display:flex;gap:3px;margin:6px 0 10px}
+  .seg i{flex:1;height:8px;border-radius:3px;background:var(--todo);display:block}
+  .seg i.doing{background:var(--doing)}
+  .seg i.done{background:var(--done)}
+  .book .meta{display:flex;justify-content:space-between;align-items:center;margin-top:auto}
+  .book .pct{font-size:13px;font-weight:800}
+  .book .cur{font-size:11px;color:var(--sub);background:#F3F4F8;padding:3px 9px;border-radius:20px;font-weight:700}
+  .badge-done{background:rgba(16,185,129,.14);color:#059669}
+  .badge-doing{background:rgba(59,130,246,.14);color:#2563EB}
+  .badge-todo{background:#F3F4F8;color:#9CA3AF}
+  .ghost{border:2px dashed #D7DAE3;background:transparent;box-shadow:none;align-items:center;justify-content:center;
+    color:var(--sub);font-weight:700;min-height:230px}
+  .ghost:hover{border-color:var(--blue);color:var(--blue);transform:translateY(-4px)}
+  .ghost .plus{font-size:34px;font-weight:300;margin-bottom:6px}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(17,24,39,.5);backdrop-filter:blur(3px);
+    display:none;align-items:flex-start;justify-content:center;z-index:50;padding:24px;overflow:auto}
+  .overlay.show{display:flex}
+  .modal{background:var(--bg);border-radius:22px;width:100%;max-width:1040px;box-shadow:0 30px 80px rgba(0,0,0,.35);
+    overflow:hidden;animation:pop .2s ease}
+  @keyframes pop{from{transform:scale(.97);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal-head{background:var(--grad);color:#fff;padding:20px 26px;display:flex;justify-content:space-between;align-items:center}
+  .modal-head h2{font-size:20px;font-weight:850}
+  .modal-head .sub{opacity:.9;font-size:13px;margin-top:3px}
+  .modal-head .x{background:rgba(255,255,255,.2);border:none;color:#fff;width:34px;height:34px;border-radius:10px;
+    font-size:18px;cursor:pointer}
+  .modal-head .x:hover{background:rgba(255,255,255,.34)}
+
+  .stepper{display:flex;gap:6px;padding:14px 22px 4px;flex-wrap:wrap}
+  .step{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:8px 11px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--sub);transition:.15s}
+  .step .dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:800;background:var(--todo);color:#fff}
+  .step.active{color:var(--ink);border-color:var(--blue);box-shadow:0 3px 10px rgba(59,130,246,.16)}
+  .step.done .dot{background:var(--done)} .step.doing .dot{background:var(--doing)}
+  .step .sname{white-space:nowrap}
+
+  .stage-body{padding:6px 26px 30px;max-height:64vh;overflow:auto}
+  .stage-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 12px;
+    background:#fff;border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm)}
+  .stage-head .l{display:flex;align-items:center;gap:10px}
+  .stage-head .ic{font-size:22px}
+  .stage-head .nm{font-size:16px;font-weight:800}
+  .stage-head .ds{font-size:12px;color:var(--sub);margin-top:2px}
+  .status-sel{display:flex;gap:6px}
+  .st{font-size:12px;font-weight:700;padding:6px 12px;border-radius:20px;border:1px solid var(--line);
+    background:#fff;cursor:pointer;color:var(--sub)}
+  .st.todo.on{background:var(--todo);color:#fff;border-color:var(--todo)}
+  .st.doing.on{background:var(--doing);color:#fff;border-color:var(--doing)}
+  .st.done.on{background:var(--done);color:#fff;border-color:var(--done)}
+
+  .field{margin:12px 0}
+  .field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#374151}
+  .field .hint{font-weight:500;color:var(--sub);font-size:11.5px}
+  input.f,textarea.f,select.f{width:100%;border:1px solid var(--line);border-radius:11px;padding:10px 12px;
+    font-size:13.5px;font-family:inherit;color:var(--ink);background:#fff;transition:.15s}
+  input.f:focus,textarea.f:focus,select.f:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+  textarea.f{resize:vertical;min-height:74px;line-height:1.55}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:640px){.two{grid-template-columns:1fr}}
+  .row{display:flex;gap:10px;align-items:center}
+  .row label{margin:0}
+
+  .tbl-note{font-size:12px;color:var(--sub);background:#FFF7E6;border:1px solid #FDE68A;border-radius:10px;
+    padding:9px 12px;margin:6px 0 4px}
+  .md-preview{margin:-6px 0 10px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto}
+  .md-preview table{border-collapse:collapse;width:100%;font-size:12.5px}
+  .md-preview th{background:#F1F5F9;color:#334155;padding:6px 8px;border:1px solid var(--line);text-align:left;white-space:nowrap}
+  .md-preview td{padding:6px 8px;border:1px solid var(--line);vertical-align:top}
+  .md-preview .mi{padding:3px 0;font-size:13px;line-height:1.55}
+  .md-preview .myc{color:#B45309;background:#FEF3C7;border-radius:6px;padding:1px 6px;margin-left:4px}
+  .list-head{display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px}
+  .list-head .tt{font-size:14px;font-weight:800}
+  .add-btn{background:#EEF2FF;color:var(--blue);border:none;border-radius:9px;padding:7px 12px;font-size:12.5px;
+    font-weight:700;cursor:pointer}
+  .add-btn:hover{background:#E0E7FF}
+  .item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px;box-shadow:var(--shadow-sm)}
+  .item .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .item .top .idx{font-size:12px;font-weight:800;color:var(--sub)}
+  .del{background:#FEE2E2;color:var(--rose);border:none;border-radius:8px;padding:4px 9px;font-size:12px;font-weight:700;cursor:pointer}
+  .del:hover{background:#FECACA}
+  .mini{font-size:11.5px;color:var(--sub);font-weight:700;margin-bottom:4px;display:block}
+
+  .graph-wrap{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px;box-shadow:var(--shadow-sm)}
+  .graph-wrap svg{width:100%;height:auto;display:block}
+  .chain{display:flex;flex-direction:column;gap:0}
+  .chain .node{background:#fff;border:1px solid var(--line);border-left:4px solid var(--orange);border-radius:11px;
+    padding:10px 13px;box-shadow:var(--shadow-sm)}
+  .chain .node .nl{font-weight:800;font-size:13.5px}
+  .chain .node .nn{font-size:12.5px;color:var(--sub);margin-top:3px}
+  .chain .arrow{text-align:center;color:var(--blue);font-size:18px;font-weight:800;padding:3px 0}
+
+  .pub-gate{background:#FFF1F2;border:1px solid #FECDD3;border-radius:14px;padding:14px 16px;margin:14px 0}
+  .pub-gate h4{color:var(--rose);font-size:14px;margin-bottom:6px}
+  .pub-gate ol{margin:6px 0 0 18px;font-size:12.5px;color:#7F1D3A}
+  .pub-gate ol li{margin:3px 0}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F2937;color:#fff;
+    padding:11px 20px;border-radius:12px;font-size:13.5px;font-weight:600;z-index:99;opacity:0;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+  .toast.show{opacity:1}
+
+  .check{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;margin:5px 14px 5px 0}
+  .check input{width:17px;height:17px;accent-color:var(--blue)}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:#EEF2FF;color:var(--blue);margin:2px 4px 2px 0}
+  .pill.hit{background:#ECFDF5;color:#059669}
+  .empty{text-align:center;color:var(--sub);padding:30px;font-size:13px}
+  .profile-box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);margin:10px 0}
+  .kv{font-size:13px;margin:4px 0}
+  .kv b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <div class="brand">
+      <h1>📚 AI 阅读执行系统</h1>
+      <p>新书推荐 → 粗读 → 逐章拆解 → 逻辑链 → 重点推荐 → 原子笔记 → 行动清单 → 书评发布，八环闭环，进度可视化</p>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-light" data-action="add-book">＋ 新增书籍</button>
+      <button class="btn btn-ghost" data-action="profile">🎯 身份画像</button>
+      <button class="btn btn-ghost" data-action="export">⬇ 导出</button>
+      <button class="btn btn-ghost" data-action="import">⬆ 导入</button>
+      <button class="btn btn-ghost" data-action="reset">↺ 示例</button>
+    </div>
+  </div>
+</header>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="section-wrap">
+  <div class="sec-title"><span class="bar"></span>执行环节分布（当前所处阶段）</div>
+  <div class="dist" id="dist"></div>
+</div>
+
+<div class="toolbar">
+  <input id="search" placeholder="🔍 搜索书名 / 作者 / 标签…">
+  <span class="chip on" data-filter="all">全部</span>
+  <span class="chip" data-filter="doing">进行中</span>
+  <span class="chip" data-filter="done">已完成</span>
+  <span class="chip" data-filter="todo">未开始</span>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<!-- Modal container -->
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="file-input" accept="application/json" style="display:none">
+
+<script src="data/state.js"></script>
+<script>
+/* =========================================================
+   AI 阅读执行系统  —  工作台（数据外置版）
+   数据唯一来源: data/state.js (window.READING_DATA)
+   localStorage 仅作运行缓存 + 滚动备份
+   设计语言参考「可视化拆书助手」：明亮 / 暖橙→墨蓝渐变 / Bento 卡片
+   ========================================================= */
+
+const STAGES = [
+  {id:1,name:'新书推荐',icon:'📥',desc:'从豆瓣/微信读书推荐，入库并拆分章节'},
+  {id:2,name:'粗读',icon:'🔍',desc:'作者信息、全书总概括、核心提炼、知识图谱'},
+  {id:3,name:'逐章拆解',icon:'📑',desc:'目录与逐章拆解，补充个人理解'},
+  {id:4,name:'逻辑链',icon:'🔗',desc:'生成全书逻辑链'},
+  {id:5,name:'重点推荐',icon:'🎯',desc:'基于身份画像推荐重点章节，针对性阅读'},
+  {id:6,name:'原子笔记',icon:'🗒️',desc:'Zettelkasten 原子笔记'},
+  {id:7,name:'行动清单',icon:'✅',desc:'生成可执行行动清单'},
+  {id:8,name:'书评发布',icon:'📣',desc:'撰写书评，确认后发布至公众号'},
+];
+const STATUS = ['todo','doing','done'];
+const STATUS_TXT = {todo:'未开始',doing:'进行中',done:'已完成'};
+const STORE_KEY = 'reading-system-v1';
+const TOTAL_TARGET = 50;
+const PALETTE = ['#F59E0B','#3B82F6','#10B981','#FE2C55','#8B5CF6','#06B6D4','#F97316','#EC4899','#14B8A6','#6366F1'];
+
+let state = { profile:{name:'',roles:[],goals:[],interests:[],purpose:''}, books:[] };
+let currentBookId = null;
+let currentStage = 1;
+let filterMode = 'all';
+let searchText = '';
+
+/* ---------- utils ---------- */
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function today(){return new Date().toISOString().slice(0,10)}
+function $(s,r=document){return r.querySelector(s)}
+function $$(s,r=document){return [...r.querySelectorAll(s)]}
+function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function mdPreview(text){ // 把 markdown 表格/列表渲染成只读预览（跟随 textarea，编辑即所见）
+  const t=(text||'').trim();if(!t)return '';
+  const lines=t.split('\n').map(l=>l.trim()).filter(Boolean);
+  const isRow=l=>l.startsWith('|')&&l.endsWith('|');
+  let html='';
+  if(lines.filter(isRow).length>=2){ // markdown 表格
+    const rows=lines.filter(isRow).map(l=>l.slice(1,-1).split('|').map(c=>c.trim()));
+    const head=rows[0],body=rows.slice(1).filter(r=>!r.every(c=>/^:?-{2,}:?$/.test(c)));
+    html+='<div class="md-preview"><table><thead><tr>'+head.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'
+      +body.map(r=>'<tr>'+head.map((_,i)=>'<td>'+esc(r[i]||'')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+  }else{ // 列表/段落
+    html='<div class="md-preview">'+lines.map(l=>{
+      const m=l.match(/^(.+?)【(我的评论)】(.*)$/);
+      if(m)return '<div class="mi">'+esc(m[1])+' <span class="myc">💭 '+esc('【'+m[2]+'】'+m[3])+'</span></div>';
+      return '<div class="mi">'+esc(l)+'</div>';
+    }).join('')+'</div>';
+  }
+  return html;
+}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1800)}
+function getPath(o,p){return p.split('.').reduce((a,k)=>a==null?a:a[k],o)}
+function setPath(o,p,v){const ks=p.split('.');let c=o;for(let i=0;i<ks.length-1;i++){if(c[ks[i]]==null)c[ks[i]]={};c=c[ks[i]]}c[ks[ks.length-1]]=v}
+
+/* ---------- stage status helpers ---------- */
+function bookStage(book,sid){return book.stages[sid]||(book.stages[sid]={status:'todo',data:{}})}
+function doneCount(book){return STAGES.filter(s=>bookStage(book,s.id).status==='done').length}
+function currentStageOf(book){
+  for(const s of STAGES){const st=bookStage(book,s.id).status;if(st!=='done')return s.id}
+  return 8;
+}
+function bookProgress(book){return Math.round(doneCount(book)/8*100)}
+
+/* ---------- persistence ---------- */
+function save(){
+  const json=JSON.stringify(state);
+  try{
+    // 滚动备份最近3版：写入前把上一版推入 _bak 链，误操作可回滚
+    const prev=localStorage.getItem(STORE_KEY);
+    if(prev){
+      for(let i=3;i>1;i--){
+        const b=localStorage.getItem(STORE_KEY+'_bak'+(i-1));
+        if(b)localStorage.setItem(STORE_KEY+'_bak'+i,b);
+      }
+      localStorage.setItem(STORE_KEY+'_bak1',prev);
+    }
+    localStorage.setItem(STORE_KEY,json);
+  }catch(e){
+    alert('保存失败（存储空间可能已满）！请立即用工具栏"导出"备份当前数据。\n'+e.message);
+  }
+}
+function load(){
+  try{const raw=localStorage.getItem(STORE_KEY);if(raw){state=JSON.parse(raw);return true}}catch(e){}
+  return false;
+}
+
+/* ---------- 内置数据（P0 外置：真实数据在 data/state.js） ---------- */
+function demoData(){
+  if(!window.READING_DATA){alert('未找到 data/state.js —— 数据文件缺失或未通过 http 服务打开');return {version:DATA_VERSION,profile:{name:'读者'},books:[]};}
+  return JSON.parse(JSON.stringify(window.READING_DATA));
+}
+function mkBook(title,author,color,emoji,source,tags,stageArr){
+  const b={id:uid(),title,author,coverColor:color,coverEmoji:emoji,addedDate:today(),source,tags:tags||[],stages:{}};
+  stageArr.forEach(([sid,st,data])=>{b.stages[sid]={status:st,data:data||{}}});
+  return b;
+}
+
+/* =========================================================
+   DASHBOARD RENDER
+   ========================================================= */
+function renderKPIs(){
+  const total=state.books.length;
+  const doneBooks=state.books.filter(b=>doneCount(b)===8).length;
+  const doingBooks=state.books.filter(b=>{const d=doneCount(b);return d>0&&d<8}).length;
+  const todoBooks=state.books.filter(b=>doneCount(b)===0).length;
+  const totalDone=state.books.reduce((a,b)=>a+doneCount(b),0);
+  $('#kpis').innerHTML=`
+    <div class="kpi"><div class="num o">${total}<span style="font-size:15px;color:var(--sub)"> / ${TOTAL_TARGET}</span></div><div class="lbl">已入库书籍（全年目标 ${TOTAL_TARGET}）</div></div>
+    <div class="kpi"><div class="num g">${doneBooks}</div><div class="lbl">八环全完成</div></div>
+    <div class="kpi"><div class="num b">${doingBooks}</div><div class="lbl">进行中</div></div>
+    <div class="kpi"><div class="num">${todoBooks}</div><div class="lbl">未开始</div></div>
+    <div class="kpi"><div class="num g">${totalDone}<span style="font-size:15px;color:var(--sub)"> / ${TOTAL_TARGET*8}</span></div><div class="lbl">累计完成环节数</div></div>`;
+}
+function renderDist(){
+  // 当前所处阶段分布
+  const counts={};STAGES.forEach(s=>counts[s.id]=0);
+  state.books.forEach(b=>{counts[currentStageOf(b)]++});
+  $('#dist').innerHTML=STAGES.map(s=>{
+    const n=counts[s.id];const h=Math.max(6,n/ (Math.max(1,...Object.values(counts))) *100);
+    return `<div class="col">
+      <div class="stack"><div class="fill" style="height:${h}%"></div></div>
+      <div class="cnt">${n}</div>
+      <div class="stage"><b>${s.icon} ${s.name}</b><br>当前 ${n} 本</div>
+    </div>`;
+  }).join('');
+}
+function renderGrid(){
+  const grid=$('#grid');
+  let list=state.books.filter(b=>{
+    if(filterMode==='done'&&doneCount(b)!==8)return false;
+    if(filterMode==='doing'&&!(doneCount(b)>0&&doneCount(b)<8))return false;
+    if(filterMode==='todo'&&doneCount(b)!==0)return false;
+    if(searchText){const t=searchText.toLowerCase();const hay=(b.title+b.author+(b.tags||[]).join('')).toLowerCase();if(!hay.includes(t))return false;}
+    return true;
+  });
+  let html='';
+  list.forEach(b=>{
+    const cs=currentStageOf(b);const csName=cs===8&&doneCount(b)===8?'全部完成':STAGES[cs-1].name;
+    const pct=bookProgress(b);
+    const seg=STAGES.map(s=>{const st=bookStage(b,s.id).status;return `<i class="${st}"></i>`}).join('');
+    const curCls=doneCount(b)===8?'badge-done':(doneCount(b)>0?'badge-doing':'badge-todo');
+    html+=`<div class="book" data-action="open-book" data-id="${b.id}">
+      <div class="cover" style="background:linear-gradient(120deg,${b.coverColor},${shade(b.coverColor,-18)})">
+        <span class="emoji">${b.coverEmoji||'📖'}</span><span class="t">${esc(b.title)}</span>
+      </div>
+      <div class="body">
+        <div class="author">${esc(b.author||'未知作者')}</div>
+        <div class="seg">${seg}</div>
+        <div class="meta">
+          <span class="pct" style="color:${pct===100?'var(--green)':'var(--blue)'}">${pct}%</span>
+          <span class="cur ${curCls}">${doneCount(b)===8?'✅ 全完成':('阶段'+cs+'·'+csName)}</span>
+        </div>
+      </div></div>`;
+  });
+  // ghost slots up to target
+  const ghosts=Math.max(0,TOTAL_TARGET-state.books.length);
+  for(let i=0;i<ghosts;i++){
+    html+=`<div class="book ghost" data-action="add-book"><div class="plus">＋</div><div>待入库（${state.books.length+i+1}/${TOTAL_TARGET}）</div></div>`;
+  }
+  if(list.length===0&&ghosts===0)html='<div class="empty">还没有符合筛选条件的书，点击右上角「新增书籍」开始。</div>';
+  grid.innerHTML=html;
+}
+function shade(hex,p){ // lighten/darken hex
+  if(!hex||typeof hex!=='string'||!/^#[0-9a-fA-F]{6}$/.test(hex))hex='#64748B'; // fallback slate
+  const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.max(0,Math.min(255,r+p));g=Math.max(0,Math.min(255,g+p));b=Math.max(0,Math.min(255,b+p));
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function renderAll(){renderKPIs();renderDist();renderGrid();}
+
+/* =========================================================
+   BOOK DETAIL MODAL
+   ========================================================= */
+function openBook(id){
+  const b=state.books.find(x=>x.id===id);if(!b)return;
+  currentBookId=id;currentStage=currentStageOf(b);
+  renderModal();
+  $('#overlay').classList.add('show');
+}
+function renderModal(){
+  const b=state.books.find(x=>x.id===currentBookId);if(!b)return;
+  const stepper=STAGES.map(s=>{const st=bookStage(b,s.id).status;const cls=st==='done'?'done':(st==='doing'?'doing':'');
+    return `<div class="step ${cls} ${s.id===currentStage?'active':''}" data-action="goto-stage" data-sid="${s.id}"><span class="dot">${st==='done'?'✓':s.id}</span><span class="sname">${s.icon} ${s.name}</span></div>`;
+  }).join('');
+  $('#modal').innerHTML=`
+    <div class="modal-head">
+      <div><h2>${esc(b.title)}</h2><div class="sub">${esc(b.author||'')} · 来源：${esc(b.source||'—')} · 入库：${b.addedDate} · 进度 ${bookProgress(b)}%</div></div>
+      <button class="x" data-action="close">✕</button>
+    </div>
+    <div class="stepper">${stepper}</div>
+    <div class="stage-body" id="stage-body"></div>`;
+  renderStage();
+}
+function renderStage(){
+  const b=state.books.find(x=>x.id===currentBookId);
+  const s=STAGES.find(x=>x.id===currentStage);
+  const st=bookStage(b,s.id);
+  const head=`<div class="stage-head">
+    <div class="l"><span class="ic">${s.icon}</span><div><div class="nm">${s.name}</div><div class="ds">${s.desc}</div></div></div>
+    <div class="status-sel">
+      ${STATUS.map(v=>`<span class="st ${v} ${st.status===v?'on':''}" data-action="set-status" data-v="${v}">${STATUS_TXT[v]}</span>`).join('')}
+    </div></div>`;
+  $('#stage-body').innerHTML=head+renderStageBody(b,s.id);
+}
+function renderStageBody(b,sid){
+  const d=bookStage(b,sid).data;
+  switch(sid){
+    case 1: return stage1(b,d);
+    case 2: return stage2(b,d);
+    case 3: return stage3(b,d);
+    case 4: return stage4(b,d);
+    case 5: return stage5(b,d);
+    case 6: return stage6(b,d);
+    case 7: return stage7(b,d);
+    case 8: return stage8(b,d);
+  }
+  return '';
+}
+
+/* ----- generic array editor ----- */
+function arrEditor(arr,fields,arrKey,addLabel,sid){
+  // arrKey e.g. 'stages.1.data.chapters'
+  let h=`<div class="list-head"><span class="tt">📋 共 ${arr.length} 项</span><button class="add-btn" data-action="arr-add" data-key="${arrKey}" data-sid="${sid}">＋ ${addLabel}</button></div>`;
+  if(arr.length===0)h+='<div class="empty">暂无条目，点击上方按钮添加。</div>';
+  arr.forEach((it,i)=>{
+    h+=`<div class="item"><div class="top"><span class="idx">#${i+1}</span><button class="del" data-action="arr-del" data-key="${arrKey}" data-i="${i}" data-sid="${sid}">删除</button></div>`;
+    fields.forEach(f=>{
+      const path=`${arrKey}.${i}.${f.name}`;
+      if(f.type==='textarea')h+=`<div class="field"><span class="mini">${f.label}</span><textarea class="f" data-field="${path}" placeholder="${f.ph||''}">${esc(it[f.name])}</textarea></div>`;
+      else if(f.type==='select')h+=`<div class="field"><span class="mini">${f.label}</span><select class="f" data-field="${path}">${f.options.map(o=>`<option ${it[f.name]===o?'selected':''}>${o}</option>`).join('')}</select></div>`;
+      else h+=`<div class="field"><span class="mini">${f.label}</span><input class="f" data-field="${path}" value="${esc(it[f.name])}" placeholder="${f.ph||''}"></div>`;
+    });
+    h+=`</div>`;
+  });
+  return h;
+}
+
+/* ----- Stage 1: 新书推荐 / 入库 / 拆章 ----- */
+function stage1(b,d){
+  d.chapters=d.chapters||[];
+  return `
+  <div class="field"><label>推荐来源 <span class="hint">豆瓣 / 微信读书 / 朋友推荐…</span></label><input class="f" data-field="stages.1.data.source" value="${esc(d.source)}"></div>
+  <div class="two">
+    <div class="field"><label>推荐人 / 渠道</label><input class="f" data-field="stages.1.data.recommender" value="${esc(d.recommender)}"></div>
+    <div class="field"><label>入库状态</label><select class="f" data-field="stages.1.data.libraryStatus">
+      ${['未入库','已入库'].map(o=>`<option ${d.libraryStatus===o?'selected':''}>${o}</option>`).join('')}</select></div>
+  </div>
+  <div class="field"><label>推荐理由</label><textarea class="f" data-field="stages.1.data.reason" placeholder="为什么想读这本？">${esc(d.reason)}</textarea></div>
+  <div class="tbl-note">📥 入库与电子书：确认来源合法（正版/已购），检查并下载电子书完成入库。本系统只做状态追踪，不提供盗版资源。</div>
+  <div class="row" style="margin:10px 0">
+    <label class="check"><input type="checkbox" data-field="stages.1.data.ebookChecked" ${d.ebookChecked?'checked':''}> 已检查电子书</label>
+    <label class="check"><input type="checkbox" data-field="stages.1.data.ebookDownloaded" ${d.ebookDownloaded?'checked':''}> 已下载入库</label>
+    <input class="f" style="width:160px" data-field="stages.1.data.ebookFormat" value="${esc(d.ebookFormat)}" placeholder="格式 EPUB/PDF">
+  </div>
+  <div class="tbl-note">🧩 章节拆分：将全书按章节拆分为独立单元，供后续「逐章拆解」使用（可在阶段3一键导入）。</div>
+  ${arrEditor(d.chapters,[{name:'title',label:'章节标题'},{name:'note',label:'备注',type:'textarea'}],'stages.1.data.chapters','添加章节',1)}
+  `;
+}
+
+/* ----- Stage 2: 粗读 ----- */
+function stage2(b,d){
+  d.concepts=d.concepts||[];d.graph=d.graph||{nodes:[],edges:[]};
+  const g=graphSVG(d.graph);
+  return `
+  <div class="field"><label>作者信息（生平经历 / 名人关联）</label><textarea class="f" data-field="stages.2.data.authorInfo" style="min-height:150px" placeholder="身份、生平经历、写作动机…">${esc(d.authorInfo)}</textarea></div>
+  <div class="tbl-note">✍️ 写作背景（写作时机 / 出版与销量表现）</div>
+  <div class="field"><textarea class="f" data-field="stages.2.data.authorBackground" placeholder="本书写作时机、出版与销量表现…">${esc(d.authorBackground)}</textarea></div>
+  <div class="tbl-note">📚 作者其他作品（每行：书名｜简介）</div>
+  <div class="field"><textarea class="f" data-field="stages.2.data.authorWorks" style="min-height:130px" placeholder="《书名》｜简介，每行一本">${esc(d.authorWorks)}</textarea></div>
+  <div class="tbl-note">🤝 与其他名人的关联（每行：人物｜关联说明）</div>
+  <div class="field"><textarea class="f" data-field="stages.2.data.authorRelations" style="min-height:110px" placeholder="人物｜关联说明，每行一条">${esc(d.authorRelations)}</textarea></div>
+  <div class="two">
+    <div class="field"><label>出版社</label><input class="f" data-field="stages.2.data.publisher" value="${esc(d.publisher)}"></div>
+    <div class="field"><label>出版年份</label><input class="f" data-field="stages.2.data.year" value="${esc(d.year)}"></div>
+  </div>
+  <div class="two">
+    <div class="field"><label>页数 / 字数</label><input class="f" data-field="stages.2.data.pages" value="${esc(d.pages)}"></div>
+    <div class="field"><label>书籍类型</label><select class="f" data-field="stages.2.data.bookType">
+      ${['理论型','工具型','叙事型','综述型','传记型'].map(o=>`<option ${d.bookType===o?'selected':''}>${o}</option>`).join('')}</select></div>
+  </div>
+  <div class="tbl-note">📖 总概括（参考「可视化拆书助手」）</div>
+  <div class="field"><label>一句话总结</label><textarea class="f" data-field="stages.2.data.oneLiner" placeholder="主语+核心动作+核心对象+目的">${esc(d.oneLiner)}</textarea></div>
+  <div class="field"><label>这本书在回答什么问题</label><textarea class="f" data-field="stages.2.data.coreQuestion">${esc(d.coreQuestion)}</textarea></div>
+  <div class="field"><label>作者的答案</label><textarea class="f" data-field="stages.2.data.authorAnswer">${esc(d.authorAnswer)}</textarea></div>
+  <div class="two">
+    <div class="field"><label>适合谁读</label><textarea class="f" data-field="stages.2.data.suitableFor">${esc(d.suitableFor)}</textarea></div>
+    <div class="field"><label>不适合谁 / 推荐指数</label>
+      <textarea class="f" data-field="stages.2.data.notSuitableFor" placeholder="不适合谁">${esc(d.notSuitableFor)}</textarea>
+      <select class="f" style="margin-top:8px" data-field="stages.2.data.recommendLevel">
+        ${['🟢推荐','🟡可看可不看','🔴不推荐'].map(o=>`<option ${d.recommendLevel===o?'selected':''}>${o}</option>`).join('')}</select>
+    </div>
+  </div>
+  <div class="tbl-note">🔧 核心提炼（3-7 个关键概念/模型，每个配人话翻译 + 什么时候用）</div>
+  ${arrEditor(d.concepts,[
+    {name:'name',label:'概念名'},
+    {name:'definition',label:'作者定义',type:'textarea'},
+    {name:'plain',label:'人话翻译',type:'textarea'},
+    {name:'importance',label:'重要度',type:'select',options:['必记','知道就行','可以跳过']},
+    {name:'whenUse',label:'什么时候用',type:'textarea'}
+  ],'stages.2.data.concepts','添加核心概念',2)}
+  <div class="tbl-note">🕸 知识图谱（参考「读书笔记整理与知识图谱」：建立书籍与概念、其他书籍的关联）</div>
+  <div class="graph-wrap">${g}</div>
+  <div class="tbl-note">⚖️ 对比分析（借鉴「冀石雨读书笔记」：与同主题书/作者其他作品对比）</div>
+  <div class="field"><textarea class="f" data-field="stages.2.data.contrast" style="min-height:130px" placeholder="markdown 表格或每行一条">${esc(d.contrast)}</textarea></div>
+  ${mdPreview(d.contrast)}
+  <div class="tbl-note">💡 深度洞察（每行一条：观点。【我的评论】你的态度）</div>
+  <div class="field"><textarea class="f" data-field="stages.2.data.insights" style="min-height:130px" placeholder="观点。【我的评论】…">${esc(d.insights)}</textarea></div>
+  ${mdPreview(d.insights)}
+  <div class="tbl-note">🧭 六维总览（人/事/物/理/重点与启发/结构展开思路，markdown 表格）</div>
+  <div class="field"><textarea class="f" data-field="stages.2.data.sixDims" style="min-height:160px" placeholder="逐章六维表">${esc(d.sixDims)}</textarea></div>
+  ${mdPreview(d.sixDims)}
+  <div class="list-head"><span class="tt">节点</span><button class="add-btn" data-action="graph-add-node" data-sid="2">＋ 节点</button></div>
+  ${(d.graph.nodes||[]).map((n,i)=>`<div class="item"><div class="top"><span class="idx">节点${i+1}</span><button class="del" data-action="graph-del-node" data-i="${i}">删除</button></div>
+    <div class="two"><input class="f" data-field="stages.2.data.graph.nodes.${i}.label" value="${esc(n.label)}" placeholder="名称">
+    <select class="f" data-field="stages.2.data.graph.nodes.${i}.type">${['book','concept','project','person'].map(o=>`<option ${n.type===o?'selected':''}>${o}</option>`).join('')}</select></div></div>`).join('')}
+  <div class="list-head"><span class="tt">关联（边）</span><button class="add-btn" data-action="graph-add-edge" data-sid="2">＋ 关联</button></div>
+  ${(d.graph.edges||[]).map((e,i)=>{const nodes=d.graph.nodes||[];return `<div class="item"><div class="top"><span class="idx">边${i+1}</span><button class="del" data-action="graph-del-edge" data-i="${i}">删除</button></div>
+    <div class="two"><select class="f" data-field="stages.2.data.graph.edges.${i}.from">${nodes.map((n,j)=>`<option value="${j}" ${e.from===j?'selected':''}>${esc(n.label)}</option>`).join('')}</select>
+    <input class="f" data-field="stages.2.data.graph.edges.${i}.relation" value="${esc(e.relation)}" placeholder="关系：支持/反驳/延伸/应用"></div>
+    <select class="f" style="margin-top:8px" data-field="stages.2.data.graph.edges.${i}.to">${nodes.map((n,j)=>`<option value="${j}" ${e.to===j?'selected':''}>${esc(n.label)}</option>`).join('')}</select></div>`}).join('')}
+  <div class="tbl-note">🏆 专家与媒体评价（每行：来源/人物｜评语）</div>
+  <div class="field"><textarea class="f" data-field="stages.2.data.expertReviews" style="min-height:180px" placeholder="来源/人物｜评语，每行一条">${esc(d.expertReviews)}</textarea></div>
+  <div class="tbl-note">💬 网络热评（豆瓣 / 微信读书 / 头条等，每行：来源｜评语）</div>
+  <div class="field"><textarea class="f" data-field="stages.2.data.hotReviews" style="min-height:180px" placeholder="来源｜评语，每行一条">${esc(d.hotReviews)}</textarea></div>
+  `;
+}
+function graphSVG(graph){
+  const nodes=graph.nodes||[];const edges=graph.edges||[];
+  if(nodes.length===0)return '<div class="empty">暂无症状图谱节点，添加节点与关联后自动绘制。</div>';
+  const W=680,H=320,cx=W/2,cy=H/2,R=Math.min(W,H)/2-50;
+  const pos=nodes.map((n,i)=>{const a=-Math.PI/2+i*2*Math.PI/nodes.length;return {x:cx+R*Math.cos(a),y:cy+R*Math.sin(a),n}});
+  const colorOf=t=>({book:'#3B82F6',concept:'#F59E0B',project:'#10B981',person:'#8B5CF6'}[t]||'#6B7280');
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs></defs>`;
+  edges.forEach(e=>{const a=pos[e.from],b=pos[e.to];if(!a||!b)return;svg+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#CBD5E1" stroke-width="2"/><text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2-4}" font-size="10" fill="#94A3B8" text-anchor="middle">${esc(e.relation||'')}</text>`});
+  pos.forEach(p=>{const c=colorOf(p.n.type);svg+=`<circle cx="${p.x}" cy="${p.y}" r="22" fill="${c}" opacity="0.92"/><text x="${p.x}" y="${p.y+4}" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">${esc((p.n.label||'').slice(0,4))}</text><text x="${p.x}" y="${p.y+38}" font-size="11" fill="#374151" text-anchor="middle">${esc(p.n.label||'')}</text>`});
+  svg+=`</svg>`;return svg;
+}
+
+/* ----- Stage 3: 逐章拆解（含个人理解） ----- */
+function stage3(b,d){
+  d.chapters=d.chapters||[];
+  const importBtn = (b.stages[1]&&b.stages[1].data.chapters&&b.stages[1].data.chapters.length&&d.chapters.length===0)
+    ? `<button class="add-btn" data-action="import-chapters" data-sid="3">⬇ 从入库章节导入</button>` : '';
+  return `
+  ${importBtn?`<div class="tbl-note">检测到阶段1已有章节拆分，可一键导入作为拆解基础。</div>`:''}
+  <div class="list-head"><span class="tt">📑 逐章拆解（参考「可视化拆书助手」+「冀石雨读书笔记·个人理解」）</span>${importBtn}</div>
+  ${arrEditor(d.chapters,[
+    {name:'title',label:'章节标题'},
+    {name:'level',label:'层级',type:'select',options:['1','2','3']},
+    {name:'importance',label:'重要性',type:'select',options:['🟢核心','🟡辅助','🔴过渡']},
+    {name:'summary',label:'章节要点总结',type:'textarea'},
+    {name:'personal',label:'个人理解（冀石雨法）',type:'textarea'},
+    {name:'quotes',label:'金句（每行一条：原文 —— 语境，仅收原文真实语句）',type:'textarea',ph:'"原文金句" —— 出现语境'},
+    {name:'cases',label:'案例（每行一个：【名称】描述 → 论证观点，仅收书中真实讲述）',type:'textarea',ph:'【案例名】描述 → 论证：观点'},
+    {name:'deepCard',label:'六维深化卡（重点章专用，冀石雨法；每行一条：【人】/【事】/【物】/【理】/【重点与启发】/【结构展开思路】）',type:'textarea',ph:'【人】…\n【事】…\n【物】…\n【理】…\n【重点与启发】…\n【结构展开思路】…'},
+    {name:'tags',label:'主题标签（逗号分隔，供阶段5匹配）'}
+  ],'stages.3.data.chapters','添加章节拆解',3)}
+  `;
+}
+
+/* ----- Stage 4: 逻辑链 ----- */
+function stage4(b,d){
+  d.chain=d.chain||[];
+  let h=`<div class="tbl-note">🔗 全书逻辑链（参考「可视化拆书助手」：章节如何环环相扣推进论证）</div>`;
+  if(d.chain.length===0)h+='<div class="empty">暂未生成逻辑链，点击下方添加环节。</div>';
+  h+=`<div class="chain">`;
+  d.chain.forEach((c,i)=>{
+    h+=`<div class="node"><div class="nl">${i+1}. ${esc(c.label)}</div><textarea class="f" style="margin-top:6px;min-height:50px" data-field="stages.4.data.chain.${i}.note" placeholder="本环节在全书中的作用…">${esc(c.note)}</textarea></div>`;
+    if(i<d.chain.length-1)h+=`<div class="arrow">↓</div>`;
+  });
+  h+=`</div><div style="margin-top:12px"><button class="add-btn" data-action="arr-add" data-key="stages.4.data.chain" data-sid="4">＋ 添加逻辑环节</button> `;
+  if(d.chain.length)h+=`<button class="del" data-action="chain-pop">移除末尾环节</button>`;
+  h+=`</div>`;
+  return h;
+}
+
+/* ----- Stage 5: 重点推荐（基于身份画像） ----- */
+function stage5(b,d){
+  d.recommended=d.recommended||[];
+  const p=state.profile;
+  // 自动匹配：阶段3章节标签 ∩ 画像兴趣标签
+  const chaps=(b.stages[3]&&b.stages[3].data.chapters)||[];
+  const interests=(p.interests||[]).map(x=>x.trim().toLowerCase()).filter(Boolean);
+  const matched={};
+  chaps.forEach(c=>{const tags=(c.tags||'').split(/[,，]/).map(t=>t.trim().toLowerCase()).filter(Boolean);
+    matched[c.title]=tags.some(t=>interests.includes(t));});
+  const profSummary = (p.name||p.roles.length||p.interests.length)
+    ? `<div class="profile-box"><div class="kv"><b>画像：</b>${esc(p.name||'未命名')}</div>
+       <div class="kv"><b>身份：</b>${(p.roles||[]).map(r=>`<span class="pill">${esc(r)}</span>`).join('')||'—'}</div>
+       <div class="kv"><b>兴趣主题：</b>${(p.interests||[]).map(r=>`<span class="pill hit">${esc(r)}</span>`).join('')||'—'}</div>
+       <div class="kv"><b>阅读目标：</b>${(p.goals||[]).map(r=>`<span class="pill">${esc(r)}</span>`).join('')||'—'}</div>
+       <div style="margin-top:6px"><button class="add-btn" data-action="profile">✎ 编辑身份画像</button></div></div>`
+    : `<div class="tbl-note">尚未配置身份画像。<button class="add-btn" data-action="profile" style="margin-left:8px">🎯 去配置</button> 画像将驱动重点章节推荐。</div>`;
+  let h=`<div class="tbl-note">🎯 基于你的身份画像，系统自动高亮与你的兴趣主题匹配的章节（标签命中）。勾选重点章节并开展针对性阅读。</div>${profSummary}`;
+  h+=`<div class="list-head"><span class="tt">从本书章节中勾选重点阅读章节</span></div>`;
+  if(chaps.length===0)h+='<div class="empty">阶段3尚无章节，请先完成逐章拆解。</div>';
+  chaps.forEach(c=>{
+    const rec=d.recommended.find(r=>r.title===c.title);
+    const on=rec&&rec.isKey;const hit=matched[c.title];
+    h+=`<div class="item" style="${hit?'border-left:4px solid var(--green)':''}">
+      <div class="top"><label class="check"><input type="checkbox" data-action="key-toggle" data-title="${esc(c.title)}" ${on?'checked':''}> <b>${esc(c.title)}</b> ${hit?'<span class="pill hit">兴趣命中</span>':''} <span class="pill">${esc(c.importance)}</span></label></div>
+      <textarea class="f" data-action="key-note" data-title="${esc(c.title)}" placeholder="为什么把它列为重点 / 针对性阅读计划…">${esc(rec?rec.rationale:'')}</textarea>
+    </div>`;
+  });
+  h+=`<div class="field" style="margin-top:14px"><label>针对性阅读总结</label><textarea class="f" data-field="stages.5.data.note" placeholder="围绕重点章节，你计划怎么读、要解决什么问题">${esc(d.note)}</textarea></div>`;
+  return h;
+}
+
+/* ----- Stage 6: Zettelkasten 原子笔记 ----- */
+function stage6(b,d){
+  d.cards=d.cards||[];
+  const TYPES=['概念卡','行动卡','观点卡'];
+  const cnt=t=>d.cards.filter(c=>(c.type||'概念卡')===t).length;
+  return `
+  <div class="tbl-note">🗂️ Zettelkasten 原子笔记 · 分类：概念卡 / 行动卡 / 观点卡 · 结构：名称 → 一句话总结 → 要点 → 来源 → 我的思考。当前：概念 ${cnt('概念卡')} · 行动 ${cnt('行动卡')} · 观点 ${cnt('观点卡')}</div>
+  <div class="list-head"><span class="tt">📇 共 ${d.cards.length} 张卡片</span><button class="add-btn" data-action="card-add" data-sid="6">＋ 新建原子笔记</button></div>
+  ${d.cards.length===0?'<div class="empty">还没有卡片，点击新建。</div>':''}
+  ${d.cards.map((c,i)=>`<div class="item">
+    <div class="top"><span class="idx">🪪 ${esc(c.id)} · <select class="f" style="display:inline-block;width:auto;padding:2px 4px" data-field="stages.6.data.cards.${i}.type">${TYPES.map(t=>`<option ${((c.type||'概念卡')===t)?'selected':''}>${t}</option>`).join('')}</select></span><button class="del" data-action="card-del" data-i="${i}">删除</button></div>
+    <div class="field"><span class="mini">卡片名称</span><input class="f" data-field="stages.6.data.cards.${i}.concept" value="${esc(c.concept)}"></div>
+    <div class="field"><span class="mini">一句话总结</span><input class="f" data-field="stages.6.data.cards.${i}.oneLiner" value="${esc(c.oneLiner)}" placeholder="这张卡只说一句话，是哪句？"></div>
+    <div class="field"><span class="mini">要点（每行一条）</span><textarea class="f" data-field="stages.6.data.cards.${i}.points" style="min-height:70px">${esc(c.points)}</textarea></div>
+    <div class="two">
+      <div class="field"><span class="mini">来源</span><input class="f" data-field="stages.6.data.cards.${i}.source" value="${esc(c.source)}" placeholder="《书名》章节/页码"></div>
+      <div class="field"><span class="mini">双向链接（每行一条：卡片ID — 关联说明）</span><textarea class="f" data-field="stages.6.data.cards.${i}.links" style="min-height:60px" placeholder="20260918-002 — 关联说明">${esc(c.links)}</textarea></div>
+    </div>
+    <div class="field"><span class="mini">我的思考（结合自己的身份与项目）</span><textarea class="f" data-field="stages.6.data.cards.${i}.myThought" style="min-height:70px" placeholder="这条知识和我的工作/项目/生活怎么接上？">${esc(c.myThought)}</textarea></div>
+    <div class="field"><span class="mini">标签</span><input class="f" data-field="stages.6.data.cards.${i}.tags" value="${esc(c.tags)}" placeholder="概念类别,领域"></div>
+  </div>`).join('')}
+  `;
+}
+
+
+/* ----- Stage 7: 行动清单 ----- */
+function stage7(b,d){
+  d.actions=d.actions||[];
+  const done=d.actions.filter(a=>a.done).length;
+  return `
+  <div class="tbl-note">✅ 可执行行动清单（参考「可视化拆书助手」：拆完必须含行动清单，每个行动写明场景）。</div>
+  <div class="list-head"><span class="tt">🎯 共 ${d.actions.length} 项，已完成 ${done}</span><button class="add-btn" data-action="action-add" data-sid="7">＋ 添加行动</button></div>
+  ${d.actions.length===0?'<div class="empty">还没有行动项，把书里的启发变成动作。</div>':''}
+  ${d.actions.map((a,i)=>`<div class="item">
+    <div class="top"><label class="check"><input type="checkbox" data-action="action-toggle" data-i="${i}" ${a.done?'checked':''}> <b style="${a.done?'text-decoration:line-through;color:var(--sub)':''}">${esc(a.content)}</b></label>
+      <button class="del" data-action="action-del" data-i="${i}">删除</button></div>
+    <div class="two">
+      <div class="field"><span class="mini">优先级</span><select class="f" data-field="stages.7.data.actions.${i}.priority">${['P0','P1','P2'].map(o=>`<option ${a.priority===o?'selected':''}>${o}</option>`).join('')}</select></div>
+      <div class="field"><span class="mini">层级（冀石雨行动建议分组）</span><select class="f" data-field="stages.7.data.actions.${i}.layer">${['认知层','决策层','行动层','信息素养层'].map(o=>`<option ${a.layer===o?'selected':''}>${o}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><span class="mini">检验标准（怎样算做到）</span><input class="f" data-field="stages.7.data.actions.${i}.verify" value="${esc(a.verify)}" placeholder="可验证的完成标志"></div>
+  </div>`).join('')}
+  `;
+}
+
+/* ----- Stage 8: 书评与发布 ----- */
+function stage8(b,d){
+  d.publishStatus=d.publishStatus||'草稿';
+  const checklist=[
+    {k:'humanizer',t:'Step5 稿件去AI味，有自己的声音'},
+    {k:'hitScore',t:'Step6 内容质量自检（标题/开头/事实/结尾）'},
+    {k:'layout',t:'Step8 排版为公众号 HTML'},
+    {k:'apiPublish',t:'Step9 发布到公众号'},
+    {k:'archived',t:'Step10 归档留存'}
+  ];
+  let h=`
+  <div class="field"><label>书评草稿</label><textarea class="f" data-field="stages.8.data.draft" style="min-height:160px" placeholder="以逐章拆解与原子笔记为素材，结合个人理解撰写书评…">${esc(d.draft)}</textarea></div>
+  <div class="tbl-note">📣 发布流程：成稿 → 质量自检 → 排版 → 发布（公众号后台或 API）→ 归档。<b>必须经你确认后方可发布。</b></div>
+  <div class="pub-gate">
+    <h4>⚠️ 发布前确认清单（五道网关）</h4>
+    <ol>
+      <li>稿件已确认，去AI味，保住个人声音</li>
+      <li>内容质量自检通过：标题抓人、开头有钩子、事实无误</li>
+      <li>封面与配图已准备就绪</li>
+      <li>排版校验通过：无格式残留、移动端可读</li>
+      <li>发布渠道就绪（公众号后台草稿箱或 API 白名单）</li>
+    </ol>
+  </div>
+  <div class="list-head"><span class="tt">流程状态勾选</span></div>
+  ${checklist.map(c=>{const v=c.k==='hitScore'?!!d.hitScore:(d[c.k]);return `<label class="check"><input type="checkbox" data-action="pub-check" data-k="${c.k}" ${v?'checked':''}> ${c.t}</label>`}).join('')}
+  <div class="field" style="margin-top:10px"><label>内容评分（0-100，可选）</label><input class="f" style="width:140px" data-field="stages.8.data.hitScore" value="${esc(d.hitScore)}" placeholder="如 88"></div>
+  <div class="row" style="margin:8px 0 14px">
+    <span class="mini" style="margin:0">发布状态：</span>
+    ${['草稿','待确认','已发布'].map(s=>`<span class="st ${d.publishStatus===s?'on':''}" data-action="pub-status" data-v="${s}" style="${d.publishStatus===s?(s==='已发布'?'background:var(--green);border-color:var(--green);color:#fff':(s==='待确认'?'background:var(--orange);border-color:var(--orange);color:#fff':'background:var(--blue);border-color:var(--blue);color:#fff')):''}">${s}</span>`).join('')}
+  </div>
+  ${d.publishStatus==='已发布'?`<div class="profile-box"><div class="kv"><b>✅ 已发布：</b>${esc(d.publishDate||today())}</div><div class="kv"><b>media_id：</b>${esc(d.mediaId||'—')}</div></div>`:
+    `<button class="btn btn-primary" data-action="pub-confirm" style="width:100%;padding:12px">📣 确认并发布至微信公众号</button>`}
+  ${d.publishStatus==='待确认'?`<div class="tbl-note" style="background:#FFF7E6">已标记为「待确认」，请人工核对发布前终检清单后，再次点击上方按钮完成发布。</div>`:''}
+  `;
+  return h;
+}
+
+/* =========================================================
+   EVENTS
+   ========================================================= */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-action]');
+  if(!t)return;
+  const a=t.dataset.action;
+  if(a==='close'){$('#overlay').classList.remove('show');renderAll();return;}
+  if(a==='add-book'){openAddBook();return;}
+  if(a==='profile'){openProfile();return;}
+  if(a==='export'){exportData();return;}
+  if(a==='import'){$('#file-input').click();return;}
+  if(a==='reset'){if(confirm('重置为示例数据？当前数据将被覆盖。')){state=demoData();save();renderAll();toast('已重置为示例数据')}return;}
+  if(a==='open-book'){openBook(t.dataset.id);return;}
+  if(a==='goto-stage'){currentStage=+t.dataset.sid;renderModal();return;}
+  if(a==='set-status'){const b=getBook();b.stages[currentStage].status=t.dataset.v;save();renderStage();renderAll();return;}
+  if(a==='arr-add'){const key=t.dataset.key;const arr=getPath(getBook(),key);if(!arr)return;arr.push({});save();renderStage();return;}
+  if(a==='arr-del'){const key=t.dataset.key;const arr=getPath(getBook(),key);arr.splice(+t.dataset.i,1);save();renderStage();return;}
+  if(a==='chain-pop'){const arr=getPath(getBook(),'stages.4.data.chain');arr.pop();save();renderStage();return;}
+  if(a==='import-chapters'){const src=(getBook().stages[1].data.chapters||[]).map(c=>({title:c.title,level:'1',importance:'🟡辅助',summary:'',personal:'',tags:''}));getBook().stages[3].data.chapters=src;save();renderStage();toast('已从入库章节导入 '+src.length+' 章');return;}
+  if(a==='graph-add-node'){const g=getBook().stages[2].data.graph;g.nodes=g.nodes||[];g.nodes.push({label:'新节点',type:'concept'});save();renderStage();return;}
+  if(a==='graph-del-node'){const g=getBook().stages[2].data.graph;g.nodes.splice(+t.dataset.i,1);g.edges=g.edges.filter(x=>x.from!==+t.dataset.i&&x.to!==+t.dataset.i).map(x=>({from:x.from>+t.dataset.i?x.from-1:x.from,to:x.to>+t.dataset.i?x.to-1:x.to,relation:x.relation}));save();renderStage();return;}
+  if(a==='graph-add-edge'){const g=getBook().stages[2].data.graph;g.edges=g.edges||[];if((g.nodes||[]).length<2){toast('至少需要2个节点');return}g.edges.push({from:0,to:1,relation:'关联'});save();renderStage();return;}
+  if(a==='graph-del-edge'){const g=getBook().stages[2].data.graph;g.edges.splice(+t.dataset.i,1);save();renderStage();return;}
+  if(a==='card-add'){const cards=getBook().stages[6].data.cards;cards.push({id:today()+'-'+String(cards.length+1).padStart(3,'0'),type:'概念卡',concept:'',oneLiner:'',points:'',content:'',source:'',links:'',tags:'',myThought:''});save();renderStage();return;}
+  if(a==='card-del'){getBook().stages[6].data.cards.splice(+t.dataset.i,1);save();renderStage();return;}
+  if(a==='action-add'){getBook().stages[7].data.actions.push({content:'',priority:'P1',done:false});save();renderStage();return;}
+  if(a==='action-del'){getBook().stages[7].data.actions.splice(+t.dataset.i,1);save();renderStage();return;}
+  if(a==='action-toggle'){const i=+t.dataset.i;getBook().stages[7].data.actions[i].done=t.checked;save();return;}
+  if(a==='key-toggle'){const title=t.dataset.title;const rec=getBook().stages[5].data;rec.recommended=rec.recommended||[];let r=rec.recommended.find(x=>x.title===title);if(t.checked){if(!r){r={title,isKey:true,rationale:''};rec.recommended.push(r)}else r.isKey=true;}else{if(r)r.isKey=false;}save();return;}
+  if(a==='key-note'){/* handled on input */}
+  if(a==='pub-check'){const k=t.dataset.k;const d8=getBook().stages[8].data;if(k==='hitScore'){d8.hitScore=t.checked?'85':'';}else{d8[k]=t.checked;}save();return;}
+  if(a==='pub-status'){getBook().stages[8].data.publishStatus=t.dataset.v;save();renderStage();return;}
+  if(a==='pub-confirm'){openPubConfirm();return;}
+});
+
+document.addEventListener('input',e=>{
+  const el=e.target.closest('[data-field]');
+  if(el){const b=getBook();if(!b)return;setPath(b,el.dataset.field,el.type==='checkbox'?el.checked:el.value);save();return;}
+  // Stage 5 重点章节「针对性阅读」理由
+  const kn=e.target.closest('[data-action="key-note"]');
+  if(kn){const b=getBook();if(!b)return;const rec=b.stages[5].data;rec.recommended=rec.recommended||[];
+    let r=rec.recommended.find(x=>x.title===kn.dataset.title);
+    if(!r){r={title:kn.dataset.title,isKey:false,rationale:''};rec.recommended.push(r);}
+    r.rationale=kn.value;save();}
+});
+// checkbox change within stage5 key-toggle is click-handled; checkbox for key handled above.
+
+function getBook(){return state.books.find(x=>x.id===currentBookId)}
+
+/* ---- add book modal ---- */
+function openAddBook(){
+  $('#modal').innerHTML=`
+    <div class="modal-head"><div><h2>＋ 新增书籍（进入环节1·新书推荐）</h2><div class="sub">推荐 → 入库 → 拆分章节</div></div><button class="x" data-action="close">✕</button></div>
+    <div class="stage-body">
+      <div class="field"><label>书名 *</label><input class="f" id="nb-title" placeholder="例如：置身事内"></div>
+      <div class="field"><label>作者</label><input class="f" id="nb-author" placeholder="作者名"></div>
+      <div class="field"><label>推荐来源</label><select class="f" id="nb-source"><option>豆瓣</option><option>微信读书</option><option>朋友推荐</option><option>其他</option></select></div>
+      <div class="field"><label>标签（逗号分隔）</label><input class="f" id="nb-tags" placeholder="经济学,政策,中国"></div>
+      <div class="field"><label>推荐理由</label><textarea class="f" id="nb-reason" placeholder="为什么想读这本？"></textarea></div>
+      <button class="btn btn-primary" style="width:100%;padding:12px" id="nb-save">入库并进入拆解流</button>
+    </div>`;
+  $('#overlay').classList.add('show');
+  $('#nb-save').onclick=()=>{
+    const title=$('#nb-title').value.trim();if(!title){toast('请填写书名');return;}
+    const b=mkBook(title,$('#nb-author').value.trim(),PALETTE[state.books.length%PALETTE.length],'📖',$('#nb-source').value,(($('#nb-tags').value)||'').split(/[,，]/).map(s=>s.trim()).filter(Boolean),[]);
+    b.stages[1]={status:'doing',data:{source:$('#nb-source').value,recommender:'',reason:$('#nb-reason').value,libraryStatus:'未入库',ebookChecked:false,ebookDownloaded:false,ebookFormat:'',chapters:[]}};
+    state.books.unshift(b);save();
+    toast('已入库：'+title);openBook(b.id);
+  };
+}
+
+/* ---- profile modal ---- */
+function openProfile(){
+  const p=state.profile;
+  $('#modal').innerHTML=`
+    <div class="modal-head"><div><h2>🎯 身份画像</h2><div class="sub">驱动阶段5「重点章节推荐」</div></div><button class="x" data-action="close">✕</button></div>
+    <div class="stage-body">
+      <div class="field"><label>称呼</label><input class="f" id="pf-name" value="${esc(p.name)}"></div>
+      <div class="field"><label>身份角色（每行一个）</label><textarea class="f" id="pf-roles" placeholder="知识工作者">${(p.roles||[]).join('\n')}</textarea></div>
+      <div class="field"><label>阅读目标（每行一个）</label><textarea class="f" id="pf-goals">${(p.goals||[]).join('\n')}</textarea></div>
+      <div class="field"><label>兴趣主题标签（逗号分隔，用于匹配章节）</label><input class="f" id="pf-interests" value="${(p.interests||[]).join(',')}" placeholder="心理学,决策,商业"></div>
+      <div class="field"><label>阅读用途</label><input class="f" id="pf-purpose" value="${esc(p.purpose)}"></div>
+      <button class="btn btn-primary" style="width:100%;padding:12px" id="pf-save">保存画像</button>
+    </div>`;
+  $('#overlay').classList.add('show');
+  $('#pf-save').onclick=()=>{
+    state.profile={name:$('#pf-name').value.trim(),roles:$('#pf-roles').value.split('\n').map(s=>s.trim()).filter(Boolean),goals:$('#pf-goals').value.split('\n').map(s=>s.trim()).filter(Boolean),interests:$('#pf-interests').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean),purpose:$('#pf-purpose').value.trim()};
+    save();toast('身份画像已保存');renderAll();
+  };
+}
+
+/* ---- publish confirm gate ---- */
+function openPubConfirm(){
+  const b=getBook();const d=b.stages[8].data;
+  $('#modal').innerHTML=`
+    <div class="modal-head"><div><h2>📣 发布确认（必经网关）</h2><div class="sub">《${esc(b.title)}》书评</div></div><button class="x" data-action="close">✕</button></div>
+    <div class="stage-body">
+      <div class="pub-gate"><h4>确认以下均已满足：</h4>
+        <label class="check"><input type="checkbox" id="c1"> 已通读成稿，去AI味，保住个人声音</label>
+        <label class="check"><input type="checkbox" id="c2"> 内容质量自检通过（标题/开头/事实/结尾）</label>
+        <label class="check"><input type="checkbox" id="c3"> 封面与配图就绪、排版校验通过</label>
+        <label class="check"><input type="checkbox" id="c4"> 发布渠道就绪（草稿箱/API）</label>
+      </div>
+      <div class="field"><label>发布后 media_id（可选，发布成功回填）</label><input class="f" id="pm-id" value="${esc(d.mediaId||'')}" placeholder="发布成功返回的 media_id"></div>
+      <button class="btn btn-primary" style="width:100%;padding:13px" id="pm-do">✅ 确认发布（标记为已发布 + 归档）</button>
+      <div class="tbl-note" style="margin-top:12px">说明：本工作台负责状态流转与记录。实际发布在你的发布渠道（公众号后台/API 工具）执行后，将返回的 media_id 回填至此，状态即流转为「已发布」。</div>
+    </div>`;
+  $('#pm-do').onclick=()=>{
+    if(!($('#c1').checked&&$('#c2').checked&&$('#c3').checked&&$('#c4').checked)){toast('请先勾选全部确认项');return;}
+    d.publishStatus='已发布';d.publishDate=today();d.mediaId=$('#pm-id').value.trim()||d.mediaId||'待回填';
+    d.archived=true;save();toast('已标记为已发布');renderStage();renderAll();
+  };
+}
+
+/* ---- export / import ---- */
+function exportData(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='reading-system-'+today()+'.json';a.click();toast('已导出 JSON');
+}
+$('#file-input').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{state=JSON.parse(r.result);save();renderAll();toast('导入成功');$('#overlay').classList.remove('show');}catch(err){toast('导入失败：文件格式错误')} };
+  r.readAsText(f);e.target.value='';
+});
+
+/* ---- toolbar ---- */
+$('#search').addEventListener('input',e=>{searchText=e.target.value;renderGrid();});
+$$('.chip').forEach(c=>c.addEventListener('click',()=>{$$('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');filterMode=c.dataset.filter;renderGrid();}));
+// delegate chip clicks inside dynamic? chips are static in toolbar, fine.
+
+/* ---- init ---- */
+const DATA_VERSION=8; // v8=迁移语义升级：state.js 是唯一真相，版本升级时整体重播种（localStorage 只是缓存，不再合并保留）；v7=修复迁移：版本号一致但内容缺深化卡/对比分析时也强制刷新演示书；v6=冀石雨借鉴
+function demoStale(state){ // 内容完整性检查：占位实现，模板无内置演示书
+  return false;
+}
+if(!load()||!state.books||state.books.length===0){state=demoData();state.version=DATA_VERSION;save();}
+else if((state.version||0)<DATA_VERSION||demoStale(state)){
+  // 版本迁移：data/state.js 是唯一真相，整体重播种（v8 起 localStorage 仅作缓存，不再合并保留旧浏览器数据）
+  state=demoData();state.version=DATA_VERSION;save();
+}
+renderAll();
+</script>
+</body>
+</html>

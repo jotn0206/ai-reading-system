@@ -1,0 +1,66 @@
+---
+name: ai-reading-system
+display_name: 一年50本书 · AI阅读执行系统
+description: AI 阅读执行系统——把一本书跑完 8 个环节（新书推荐→粗读→逐章拆解→逻辑链→重点推荐→原子笔记→行动清单→书评），全部产出结构化落盘，带金句逐字校验网关与真实页码注入，并生成可发布的书评。当用户说"拆书""拆解这本书""读书笔记""逐章拆解""做这本书的阅读计划""重点章节推荐""原子笔记""生成书评""这本书怎么读""新书入库""跑阅读系统"等，或提供 epub/PDF/书名希望系统化精读产出时使用。
+description_zh: 把"读一本书"变成结构化产出：8 个环节（新书推荐→粗读→逐章拆解→逻辑链→重点推荐→原子笔记→行动清单→书评）、金句逐字校验、真实页码注入、本地可视化工作台，最终生成可发布的书评。适合想系统化精读并产出内容的人。
+description_en: "Turn reading a book into structured output: 8 stages from book intake to chapter breakdowns, logic chains, personalized chapter recommendations, Zettelkasten atomic notes, action lists, and a publishable book review. Includes verbatim quote verification, real page-number injection, and a local visual workbench."
+category: education
+version: 1.0.0
+author: 洋葱姐
+---
+
+# 一年50本书 · AI 阅读执行系统
+
+把"读一本书"变成结构化产出：8 个环节、金句逐字校验、真实页码、可发布书评。本地工作台（index.html）可视化追踪进度，数据存用户自己的目录。
+
+## 首次使用：初始化工作目录
+
+1. 问用户要一个工作目录（缺省建议 `<工作区>/reading-data/`）。
+2. 把本技能 `templates/workbench/` 下全部内容复制进去（含 `index.html` 与 `data/state.js`）。
+3. 让用户用浏览器打开 `index.html` 确认工作台可用（或起本地 http 服务）。
+4. 引导用户完成**身份画像**（工作台「🎯 身份画像」按钮，或直接写 `data/state.js` 的 `profile`）：身份角色 / 目标 / 兴趣主题 / 读这些书为了什么。环节5、6、8 都靠它做个性化。
+
+## 核心流程
+
+```mermaid
+flowchart LR
+    A[WF1 新书入库] --> B[WF2 八环节执行]
+    B --> C[WF3 校验收尾]
+    C --> D[书评发布]
+```
+
+### WF1 新书入库 → 读 @references/wf1-add-book.md
+
+用户给 epub / PDF / 粘贴文本 → 转全文 md → `scripts/split_fulltext.js` 切章 → `scripts/add-book.js` 入库。
+铁律：书名三处逐字一致；只处理用户自己提供的书。
+
+### WF2 八环节执行 → 读 @references/wf2-eight-stages.md
+
+逐环节生成内容、写入 `data/state.js`、过质量门后标 done。
+关键纪律：评价/热评不许编造；金句逐字对照原文；环节5/6/8 必须结合用户身份画像；每 1-2 环节提醒用户导出落盘。
+
+### WF3 校验收尾 → 读 @references/wf3-gateways.md
+
+`scripts/pipeline.js <书名> --data <工作目录>`：金句逐字校验（硬网关）→ 案例锚点校验（软网关）→ 真实页码注入 → 单书数据提取。先 `--dry-run` 再真跑。
+
+### 书评发布
+
+环节8 产出书评稿后，在工作台过五道网关，**发布动作必须经用户确认**。发布渠道由用户决定（公众号后台粘贴或 API 工具）。
+
+## 用户体验约定
+
+- 对话驱动：用户说意图（"帮我拆《置身事内》"），agent 跑命令、生成内容、写数据，用户在工作台看结果、做勾选和批注。
+- 内容不满意时：就地改 / 带反馈重生成 / 固化风格偏好，三层机制见 wf2。
+- 版权红线：系统不分发书籍内容；金句引用限于合理范围；拆解以转述+解读为主。
+
+## Resources
+
+- `scripts/add-book.js` — 书目入库（--state 指定数据文件）
+- `scripts/epub2fulltext.py` — EPUB → 全文 md
+- `scripts/split_fulltext.js` — 全文切章
+- `scripts/pipeline.js` — 校验+页码+提取 一键收尾（--data 指定工作目录）
+- `scripts/save-export.js` — 工作台导出 JSON 回填 state.js
+- `templates/workbench/` — 工作台模板（index.html + 空 state.js），复制即用
+- @references/wf1-add-book.md — 新书入库详解
+- @references/wf2-eight-stages.md — 八环节生成规范与质量门
+- @references/wf3-gateways.md — 校验网关、数据维护与事故恢复
