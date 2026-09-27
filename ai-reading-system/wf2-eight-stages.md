@@ -16,7 +16,7 @@
 2. 写完立即 `node -e "JSON.parse(require('fs').readFileSync('<path>','utf8').replace(/^[\s\S]*?window\.READING_DATA\s*=\s*/,'').replace(/;\s*$/,''))"` 验证 JSON 合法。
 3. 字段名以工作台 `index.html` 各 `stageN()` 渲染函数里的 `data-field` 为准——**写库前先 grep 确认**，不要凭记忆。
 4. 内容较多时用临时脚本写库（多行字符串比命令行内联稳）。
-5. 每完成 1-2 个环节提醒用户在工作台点「导出」，然后 `node scripts/save-export.js <导出.json> --state <工作目录>/data/state.js` 落盘。
+5. 每完成 1-2 个环节提醒用户在工作台点「导出」，然后 `node save-export.js <导出.json> --state <工作目录>/data/state.js` 落盘。
 
 ## 各环节规范与质量门
 

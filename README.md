@@ -78,7 +78,7 @@ python package_skill.py ai-reading-system dist
    - 名称：一年50本书 · AI阅读执行系统（display_name）
    - 中文简介 description_zh / 英文简介 description_en / 分类 category / 版本 / 作者
    - 图标 512×512 PNG（待补）
-3. 上传技能包 ZIP（≤3MB，结构 `{skill-name}/SKILL.md` + references/ + scripts/ + templates/）
+3. 上传技能包 ZIP（≤3MB，**两级目录结构**：包内所有文件平铺在 `{skill-name}/` 下一层，不能有子目录嵌套）
 4. 提交审核（官方审核约 1-3 个工作日：安全性/稳定性/合规性）
 5. 审核通过后在技能列表选择上架，用户即可搜索安装
 
@@ -86,28 +86,30 @@ python package_skill.py ai-reading-system dist
 
 ### 版本迭代流程
 
-1. 改 `ai-reading-system/` 下的 SKILL.md / scripts / references / templates
-2. `python package_skill.py ai-reading-system dist` 重新打包
+1. 改 `ai-reading-system/` 根目录下的任意文件（SKILL.md / 脚本 / wf 文档 / 工作台模板）
+2. `python build.py` 重新出双包并同步本机技能（或 `python package_skill.py ai-reading-system dist`）
 3. 同步一份到 `~/.workbuddy/skills/ai-reading-system/` 本机自用
 4. git commit + push；市场版本号 +1 重新提审
 
 ## 目录结构
 
 ```
-ai-reading-system/
-├── SKILL.md                  # 技能定义（触发词 + 主流程 + 市场元数据）
-├── references/
-│   ├── wf1-add-book.md       # 新书入库（epub/PDF/粘贴 → 全文 → 切章 → 入库）
-│   ├── wf2-eight-stages.md   # 八环节生成规范、质量门、三层调整机制
-│   └── wf3-gateways.md       # 校验网关原理、数据维护与事故恢复
-├── scripts/
-│   ├── add-book.js           # 书目入库（自动备份、防重名）
-│   ├── epub2fulltext.py      # EPUB → 全文 markdown
-│   ├── split_fulltext.js     # 全文切章
-│   ├── pipeline.js           # 校验网关 + 页码注入 + 数据提取
-│   └── save-export.js        # 工作台导出 JSON 回填
-└── templates/workbench/      # 工作台模板（index.html + 空 state.js）
+ai-reading-system/          # 包内所有文件平铺在这一层，无子目录
+├── SKILL.md                # 技能定义（触发词 + 主流程 + 市场元数据）
+├── wf1-add-book.md         # 新书入库（epub/PDF/粘贴 → 全文 → 切章 → 入库）
+├── wf2-eight-stages.md     # 八环节生成规范、质量门、三层调整机制
+├── wf3-gateways.md         # 校验网关原理、数据维护与事故恢复
+├── add-book.js             # 书目入库（自动备份、防重名）
+├── epub2fulltext.py        # EPUB → 全文 markdown
+├── pdf2fulltext.py         # PDF → 全文 markdown（书签切章 + 真实页码标记）
+├── split_fulltext.js       # 全文切章
+├── pipeline.js             # 校验网关 + 页码注入 + 数据提取
+├── save-export.js          # 工作台导出 JSON 回填
+├── index.html              # 工作台模板（复制到用户目录即可打开）
+└── state.js                # 工作台空数据模板（放用户目录的 data/ 下）
 ```
+
+> 工作台约定的用户目录结构仍是两层：`index.html` 在根、`data/state.js` 在 `data/` 下——这是运行时约束，不是包结构约束。
 
 ## 版权与免责
 

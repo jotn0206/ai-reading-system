@@ -13,10 +13,12 @@ author: 洋葱姐
 
 把"读一本书"变成结构化产出：8 个环节、金句逐字校验、真实页码、可发布书评。本地工作台（index.html）可视化追踪进度，数据存用户自己的目录。
 
+> 包结构：本技能所有文件平铺在根目录，无子目录。脚本、参考文档、工作台模板都在同级。
+
 ## 首次使用：初始化工作目录
 
 1. 问用户要一个工作目录（缺省建议 `<工作区>/reading-data/`）。
-2. 把本技能 `templates/workbench/` 下全部内容复制进去（含 `index.html` 与 `data/state.js`）。
+2. 复制工作台模板：`index.html` 直接放进工作目录根目录；`state.js` 放进 `工作目录/data/state.js`（同目录下 index.html 以 `data/state.js` 相对路径加载它，这两者的相对位置不能变）。
 3. 让用户用浏览器打开 `index.html` 确认工作台可用（或起本地 http 服务）。
 4. 引导用户完成**身份画像**（工作台「🎯 身份画像」按钮，或直接写 `data/state.js` 的 `profile`）：身份角色 / 目标 / 兴趣主题 / 读这些书为了什么。环节5、6、8 都靠它做个性化。
 
@@ -29,19 +31,19 @@ flowchart LR
     C --> D[书评发布]
 ```
 
-### WF1 新书入库 → 读 @references/wf1-add-book.md
+### WF1 新书入库 → 读 @wf1-add-book.md
 
-用户给 epub / PDF / 粘贴文本 → 转全文 md → `scripts/split_fulltext.js` 切章 → `scripts/add-book.js` 入库。
+用户给 epub / PDF / 粘贴文本 → 转全文 md → `split_fulltext.js` 切章 → `add-book.js` 入库。
 铁律：书名三处逐字一致；只处理用户自己提供的书。
 
-### WF2 八环节执行 → 读 @references/wf2-eight-stages.md
+### WF2 八环节执行 → 读 @wf2-eight-stages.md
 
 逐环节生成内容、写入 `data/state.js`、过质量门后标 done。
 关键纪律：评价/热评不许编造；金句逐字对照原文；环节5/6/8 必须结合用户身份画像；每 1-2 环节提醒用户导出落盘。
 
-### WF3 校验收尾 → 读 @references/wf3-gateways.md
+### WF3 校验收尾 → 读 @wf3-gateways.md
 
-`scripts/pipeline.js <书名> --data <工作目录>`：金句逐字校验（硬网关）→ 案例锚点校验（软网关）→ 真实页码注入 → 单书数据提取。先 `--dry-run` 再真跑。
+`pipeline.js <书名> --data <工作目录>`：金句逐字校验（硬网关）→ 案例锚点校验（软网关）→ 真实页码注入 → 单书数据提取。先 `--dry-run` 再真跑。
 
 ### 书评发布
 
@@ -55,12 +57,13 @@ flowchart LR
 
 ## Resources
 
-- `scripts/add-book.js` — 书目入库（--state 指定数据文件）
-- `scripts/epub2fulltext.py` — EPUB → 全文 md
-- `scripts/split_fulltext.js` — 全文切章
-- `scripts/pipeline.js` — 校验+页码+提取 一键收尾（--data 指定工作目录）
-- `scripts/save-export.js` — 工作台导出 JSON 回填 state.js
-- `templates/workbench/` — 工作台模板（index.html + 空 state.js），复制即用
-- @references/wf1-add-book.md — 新书入库详解
-- @references/wf2-eight-stages.md — 八环节生成规范与质量门
-- @references/wf3-gateways.md — 校验网关、数据维护与事故恢复
+- `add-book.js` — 书目入库（--state 指定数据文件）
+- `epub2fulltext.py` — EPUB → 全文 md
+- `pdf2fulltext.py` — PDF → 全文 md（书签驱动切章 + 真实页码标记）
+- `split_fulltext.js` — 全文切章
+- `pipeline.js` — 校验+页码+提取 一键收尾（--data 指定工作目录）
+- `save-export.js` — 工作台导出 JSON 回填 state.js
+- `index.html` + `state.js` — 工作台模板（复制即用）
+- @wf1-add-book.md — 新书入库详解
+- @wf2-eight-stages.md — 八环节生成规范与质量门
+- @wf3-gateways.md — 校验网关、数据维护与事故恢复

@@ -48,6 +48,20 @@ def build_local_variant() -> str:
     return f'---\n{local_frontmatter(fm)}\n---\n{body}'
 
 
+def check_flat_structure():
+    """硬约束：技能包内只允许两级目录（ai-reading-system/文件），禁止任何子目录嵌套。"""
+    bad = []
+    for f in sorted(SRC.rglob('*')):
+        if f.is_file():
+            rel = f.relative_to(SRC).as_posix()
+            if '/' in rel:
+                bad.append(rel)
+    if bad:
+        raise SystemExit(f'❌ 包内有子目录嵌套（市场解析会失败）：\n   ' + '\n   '.join(bad)
+                         + '\n   请把这些文件全部拍平到技能根目录。')
+    print(f'✅ 目录结构合规：包内 {len(list(SRC.rglob("*")))} 个文件全部平铺在 {SKILL_NAME}/ 下一层')
+
+
 def zip_skill(frontmatter_override: str | None, out_path: Path):
     if out_path.exists():
         out_path.unlink()
@@ -59,10 +73,16 @@ def zip_skill(frontmatter_override: str | None, out_path: Path):
                     z.writestr(arc, frontmatter_override)
                 else:
                     z.write(f, arc)
+    # 复核压缩包内路径深度
+    with zipfile.ZipFile(out_path) as z:
+        for n in z.namelist():
+            if n.count('/') > 1:
+                raise SystemExit(f'❌ 压缩包内层级超限：{n}')
 
 
 def main():
     DIST.mkdir(exist_ok=True)
+    check_flat_structure()
     local_md = build_local_variant()
 
     # 1/2. 两种分发包

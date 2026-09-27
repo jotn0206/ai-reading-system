@@ -18,7 +18,7 @@ if (!title || !author) {
   process.exit(1);
 }
 if (!fs.existsSync(STATE)) {
-  console.error(`✗ 找不到数据文件: ${STATE}\n  请先初始化工作台（复制 assets/workbench 到工作目录），或用 --state 指定路径`);
+  console.error(`✗ 找不到数据文件: ${STATE}\n  请先初始化工作台（把技能包里的 index.html 与 state.js 复制到工作目录），或用 --state 指定路径`);
   process.exit(1);
 }
 

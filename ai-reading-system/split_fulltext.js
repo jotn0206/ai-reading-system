@@ -25,9 +25,11 @@ const OUT = getOpt('--out') || path.join('chapters', TITLE);
 const MANIFEST = getOpt('--manifest') || path.join(path.dirname(OUT), 'chapters_manifest.json');
 const TODAY = new Date().toISOString().slice(0, 10);
 
-// ---------- 中文数字 → 两位序号 ----------
+// ---------- 中文数字/阿拉伯数字 → 序号 ----------
 const CN = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
 function cnNum(str) {
+  str = (str || '').trim();
+  if (/^\d+$/.test(str)) return parseInt(str, 10); // 阿拉伯数字（PDF 目录常见）
   if (str === '十') return 10;
   if (str.startsWith('十')) return 10 + CN[str[1]];
   if (str.includes('十')) { const m = str.split('十'); return CN[m[0]] * 10 + (m[1] ? CN[m[1]] : 0); }
