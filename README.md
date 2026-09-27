@@ -64,25 +64,44 @@ cp -r ai-reading-system ~/.workbuddy/skills/
 
 ## 打包与发布（维护者）
 
-### 打包 .skill 分发包
+### 打包
 
 ```bash
-python package_skill.py ai-reading-system dist
-# 产出 dist/ai-reading-system.skill（zip 格式）
+python build.py
+# 产出三个包 + 同步本机技能（下面「三个包怎么选」）
 ```
+
+| 包 | 内部路径形状 | 用途 |
+|---|---|---|
+| `dist/ai-reading-system-marketplace.zip` | `ai-reading-system/文件`（1 段路径 + 文件） | **市场提交主推** |
+| `dist/ai-reading-system-root.zip` | `文件`（零前缀） | 备用：若平台按「包根即技能根」解析 |
+| `dist/ai-reading-system.skill` | `ai-reading-system/文件` | 发公众号/粉丝群，用户双击导入 |
+
+**为什么全平铺**：开放平台解析器实际只接受两级（`{skill-name}/文件`），官方文档示例里的 `references/`、`scripts/`、`templates/` 三段路径会触发「目录层级超限」。`build.py` 的 `check_flat_structure()` 会在构建时硬校验，出现子目录直接构建失败。
 
 ### 提交 WorkBuddy 技能市场
 
 1. 访问 WorkBuddy 开放平台 open.workbuddy.cn，完成开发者注册/入驻
-2. 准备材料（已备齐，见 SKILL.md frontmatter）：
-   - 名称：一年50本书 · AI阅读执行系统（display_name）
-   - 中文简介 description_zh / 英文简介 description_en / 分类 category / 版本 / 作者
-   - 图标 512×512 PNG（待补）
-3. 上传技能包 ZIP（≤3MB，**两级目录结构**：包内所有文件平铺在 `{skill-name}/` 下一层，不能有子目录嵌套）
-4. 提交审核（官方审核约 1-3 个工作日：安全性/稳定性/合规性）
-5. 审核通过后在技能列表选择上架，用户即可搜索安装
+2. 填写元数据（值已备齐，直接抄 `ai-reading-system/SKILL.md` 的 frontmatter）：
+   | 字段 | 值 |
+   |---|---|
+   | 技能标识 name | `ai-reading-system` |
+   | 展示名称 display_name | 一年50本书 · AI阅读执行系统 |
+   | 一句话描述 description | SKILL.md frontmatter 里的长 description（触发词全在里面） |
+   | description_zh / description_en | frontmatter 对应字段 |
+   | 分类 category | `education` |
+   | 版本 version | `1.0.0`（每次提审 +1） |
+   | 作者 author | 洋葱姐 |
+   | 图标 | 512×512 PNG（**待补**） |
+3. 上传 `dist/ai-reading-system-marketplace.zip`（41KB，≤3MB）
+4. 提交审核（约 1-3 个工作日：安全性 / 稳定性 / 合规性）
 
-卡在包解析：对照官方文档 open.workbuddy.cn/docs/skill 检查结构，或邮件 openworkbuddy@tencent.com。
+**解析失败排查**（提示「目录层级超限」时按顺序试）：
+
+1. 换 `dist/ai-reading-system-root.zip`（零前缀形状）再传一次
+2. 确认压缩包内没有 `ai-reading-system/` 之外的多余条目、没有嵌套的 zip
+3. 本地先自查：`unzip -l ai-reading-system-marketplace.zip` 里每条路径都应是 `ai-reading-system/xxx`
+4. 仍失败：邮件 openworkbuddy@tencent.com，抄送包结构说明
 
 ### 版本迭代流程
 
