@@ -43,6 +43,7 @@ node <技能目录>/pipeline.js <书名> --data .
 - 全文 md 无页码标记时网关只报"无法定位"，不会编页码——EPUB 属正常；PDF 来源缺标记则回 WF1 修全文。
 - 弯引号金句内嵌内层引号可能截断提取——网关已做分层提取，若见误报优先检查引号形态。
 - 金句未命中多数是转写错字或 AI 改写了原句——回环节3修正，不要用 `--skip-verify` 掩盖。
+- **别手工改发布包**：口令门曾被手工塞进发布包、源码里却没有，事件绑在 body 元素上抛 TypeError，回车提交整段失效（事故 E）。发布链路一律走 `publish-online.js` 从源码生成 + `test-gate.py` 回归。
 
 ## 数据维护与事故恢复
 
@@ -57,5 +58,6 @@ node <技能目录>/pipeline.js <书名> --data .
 | 工作台里改坏了（未导出） | 关工作台别再点保存；从 localStorage `_bak1` 取 JSON 存文件 → save-export 回填 |
 | state.js 被改坏/误删 | 找最近的 `state.js.bak-<时间戳>` 复原；再不行从 `data/state-<书id>.json` 反推 |
 | 浏览器脏数据 | 工作台会自动用 state.js 重播种；仍异常则清 localStorage 后刷新 |
+| 发布包里改过东西，重建后又没了 | 从源码重建会覆盖所有手工改动 → 改完立刻回灌源码，再跑 `publish-online.js`（见 @wf4-online-workbench.md） |
 
 **改脚本/改工作台的规矩**：先备份 → 写盘前先跑通 dry 逻辑 → 改完跑验证 → 锚点匹配带足上下文（防止误删其他书的数据）。

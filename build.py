@@ -48,6 +48,38 @@ def build_local_variant() -> str:
     return f'---\n{local_frontmatter(fm)}\n---\n{body}'
 
 
+REQUIRED_FM = ('name', 'version', 'display_name', 'display_name_en',
+               'description', 'description_zh', 'description_en')
+
+
+def check_frontmatter():
+    """硬约束：市场解析器必填字段。缺一个就提交失败（2026-09-27 display_name_en 事故）。"""
+    fm_text = (SRC / 'SKILL.md').read_text(encoding='utf-8')
+    if not fm_text.startswith('---\n'):
+        raise SystemExit('❌ SKILL.md 首行必须是 ---')
+    end = fm_text.find('\n---\n', 3)
+    fm = fm_text[4:end]
+    try:
+        import yaml
+        data = yaml.safe_load(fm)
+    except Exception as e:  # 没有 yaml 模块就退化为逐行检查
+        data = None
+        print(f'⚠️  未装 pyyaml，跳过 YAML 解析（{e}）')
+    if data is None:
+        data = {}
+        for l in fm.split('\n'):
+            if ':' in l and not l.startswith(' '):
+                k, v = l.split(':', 1)
+                data[k.strip()] = v.strip().strip('"\'')
+    missing = [k for k in REQUIRED_FM if not str(data.get(k, '')).strip()]
+    if missing:
+        raise SystemExit('❌ SKILL.md frontmatter 缺少市场必填字段：'
+                         + ', '.join(missing))
+    for k in REQUIRED_FM:
+        print(f'   {k}: {str(data[k])[:48]}…')
+    print('✅ frontmatter 合规：市场必填字段齐全（含 display_name_en）')
+
+
 def check_flat_structure():
     """硬约束：技能包内只允许两级目录（ai-reading-system/文件），禁止任何子目录嵌套。"""
     bad = []
@@ -60,6 +92,50 @@ def check_flat_structure():
         raise SystemExit(f'❌ 包内有子目录嵌套（市场解析会失败）：\n   ' + '\n   '.join(bad)
                          + '\n   请把这些文件全部拍平到技能根目录。')
     print(f'✅ 目录结构合规：包内 {len(list(SRC.rglob("*")))} 个文件全部平铺在 {SKILL_NAME}/ 下一层')
+
+
+PLACEHOLDER_PASS = 'AIREAD2026'
+
+
+def check_pass_placeholder():
+    """硬约束：模板里的访问口令必须是占位符，不许把真实口令写死随包分发（2026-09-28 加固）。"""
+    html = (SRC / 'index.html').read_text(encoding='utf-8')
+    m = re.search(r"var\s+PASS\s*=\s*['\"]([^'\"]+)['\"]", html)
+    if not m:
+        raise SystemExit('❌ index.html 里没找到 var PASS=，口令门可能已被破坏')
+    if m.group(1) == PLACEHOLDER_PASS:
+        print(f'✅ 口令占位符合规：var PASS=\'{PLACEHOLDER_PASS}\'（部署前改这一处）')
+    else:
+        raise SystemExit(f"❌ index.html 里的口令是 '{m.group(1)}'，不是占位符 {PLACEHOLDER_PASS}"
+                         f'\n   把 var PASS= 改回占位符再打包。')
+    # 排除 xmlns 这类 `p://` 误报：盘符前一个字符不能是字母数字/点下划线
+    if re.search(r'(?<![A-Za-z0-9._-])[A-Za-z]:[\\/]', html):
+        hits = [l.strip()[:90] for l in html.split('\n')
+                if re.search(r'(?<![A-Za-z0-9._-])[A-Za-z]:[\\/]', l)]
+        raise SystemExit('❌ index.html 里出现本机盘符路径（对外分发会泄露你的目录结构）：\n   '
+                         + '\n   '.join(hits[:5]))
+
+
+def check_no_fulltext():
+    """硬约束：版权红线。工作台模板不得引用/内嵌书全文。"""
+    html = (SRC / 'index.html').read_text(encoding='utf-8')
+    if 'data/fulltext' in html:
+        raise SystemExit('❌ index.html 出现 data/fulltext 引用（会带出书全文）')
+    print('✅ 版权红线：模板未引用 data/fulltext')
+
+
+def clean_dist():
+    """清掉 dist/ 里的中间产物，只留三个正式包。"""
+    keep = (f'{SKILL_NAME}.skill', f'{SKILL_NAME}-marketplace.zip', f'{SKILL_NAME}-root.zip')
+    removed = []
+    for p in sorted(DIST.glob('*')):
+        if p.is_file() and p.name not in keep:
+            p.unlink()
+            removed.append(p.name)
+    if removed:
+        print('🧹 清理 dist 中间产物：' + ', '.join(removed))
+    else:
+        print('✅ dist 目录干净')
 
 
 def zip_skill(frontmatter_override: str | None, out_path: Path):
@@ -82,12 +158,17 @@ def zip_skill(frontmatter_override: str | None, out_path: Path):
 
 def main():
     DIST.mkdir(exist_ok=True)
+    check_frontmatter()
     check_flat_structure()
+    check_pass_placeholder()
+    check_no_fulltext()
+    clean_dist()
     local_md = build_local_variant()
 
-    # 1/2. 两种分发包
-    zip_skill(local_md, DIST / f'{SKILL_NAME}.skill')
-    zip_skill(None, DIST / f'{SKILL_NAME}-marketplace.zip')
+    # 1/2/3. 三种分发包
+    zip_skill(local_md, DIST / f'{SKILL_NAME}.skill')                          # 粉丝群/本地导入
+    zip_skill(None, DIST / f'{SKILL_NAME}-marketplace.zip')                    # 市场提交（主推）
+    zip_skill(None, DIST / f'{SKILL_NAME}-root.zip')                           # 零前缀，备用
 
     # 3. 本机安装（frontmatter 精简版）
     dest = LOCAL_SKILLS / SKILL_NAME
@@ -96,7 +177,8 @@ def main():
     shutil.copytree(SRC, dest)
     (dest / 'SKILL.md').write_text(local_md, encoding='utf-8')
 
-    for p in (DIST / f'{SKILL_NAME}.skill', DIST / f'{SKILL_NAME}-marketplace.zip'):
+    for p in (DIST / f'{SKILL_NAME}.skill', DIST / f'{SKILL_NAME}-marketplace.zip',
+              DIST / f'{SKILL_NAME}-root.zip'):
         size = p.stat().st_size
         assert size < 3 * 1024 * 1024, f'{p.name} 超过 3MB 限制'
         print(f'✅ {p.name}  {size/1024:.0f} KB')

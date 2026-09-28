@@ -1,11 +1,26 @@
 ---
 name: ai-reading-system
+version: 1.1.0
 display_name: 一年50本书 · AI阅读执行系统
-description: AI 阅读执行系统——把一本书跑完 8 个环节（新书推荐→粗读→逐章拆解→逻辑链→重点推荐→原子笔记→行动清单→书评），全部产出结构化落盘，带金句逐字校验网关与真实页码注入，并生成可发布的书评。当用户说"拆书""拆解这本书""读书笔记""逐章拆解""做这本书的阅读计划""重点章节推荐""原子笔记""生成书评""这本书怎么读""新书入库""跑阅读系统"等，或提供 epub/PDF/书名希望系统化精读产出时使用。
-description_zh: 把"读一本书"变成结构化产出：8 个环节（新书推荐→粗读→逐章拆解→逻辑链→重点推荐→原子笔记→行动清单→书评）、金句逐字校验、真实页码注入、本地可视化工作台，最终生成可发布的书评。适合想系统化精读并产出内容的人。
-description_en: "Turn reading a book into structured output: 8 stages from book intake to chapter breakdowns, logic chains, personalized chapter recommendations, Zettelkasten atomic notes, action lists, and a publishable book review. Includes verbatim quote verification, real page-number injection, and a local visual workbench."
+display_name_en: AI Reading System · 50 Books a Year
+description: >
+  AI 阅读执行系统——把一本书跑完 8 个环节（新书推荐→粗读→逐章拆解→逻辑链→重点推荐→原子笔记→行动清单→书评），
+  全部产出结构化落盘，带金句逐字校验网关与真实页码注入，并生成可发布的书评；可选的在线工作台能把进度挂到公网链接。
+  当用户说「拆书」「拆解这本书」「读书笔记」「逐章拆解」「做这本书的阅读计划」「重点章节推荐」「原子笔记」
+  「生成书评」「这本书怎么读」「新书入库」「跑阅读系统」「用 AI 一句话拆解一本书」，
+  或提供 epub / PDF / 书名 / 链接希望系统化精读产出，
+  或说「把工作台发布到线上」「在线工作台」「部署阅读工作台」「工作台口令」时使用。
+description_zh: >
+  把「读一本书」变成结构化产出：8 个环节（新书推荐→粗读→逐章拆解→逻辑链→重点推荐→原子笔记→行动清单→书评）、
+  金句逐字校验、真实页码注入、本地可视化工作台，最终生成可发布的书评；可选把工作台发布成带访问口令的公网链接。
+  适合想系统化精读一本书、并沉淀成读书笔记与内容的人。
+description_en: >
+  Turn reading a book into structured output: 8 stages from book intake and overview to chapter-by-chapter
+  breakdowns, logic chains, personalized chapter recommendations, Zettelkasten atomic notes, action lists,
+  and a final publishable book review. Features verbatim quote verification, real page-number injection,
+  and a local visual workbench. Use when the user wants to dissect a book, take structured reading notes,
+  or generate a book review.
 category: education
-version: 1.0.0
 author: 洋葱姐
 ---
 
@@ -45,6 +60,11 @@ flowchart LR
 
 `pipeline.js <书名> --data <工作目录>`：金句逐字校验（硬网关）→ 案例锚点校验（软网关）→ 真实页码注入 → 单书数据提取。先 `--dry-run` 再真跑。
 
+### WF4 在线工作台发布（可选）→ 读 @wf4-online-workbench.md
+
+`publish-online.js` 从源码生成发布包 → `test-gate.py` 真实浏览器跑口令门 7 项 → 上传到静态托管。
+口令门只改 `var PASS=` 一处；**发布包的任何手工改动都必须回灌源码**，否则下次重建就丢。
+
 ### 书评发布
 
 环节8 产出书评稿后，在工作台过五道网关，**发布动作必须经用户确认**。发布渠道由用户决定（公众号后台粘贴或 API 工具）。
@@ -63,7 +83,10 @@ flowchart LR
 - `split_fulltext.js` — 全文切章
 - `pipeline.js` — 校验+页码+提取 一键收尾（--data 指定工作目录）
 - `save-export.js` — 工作台导出 JSON 回填 state.js
-- `index.html` + `state.js` — 工作台模板（复制即用）
+- `publish-online.js` — 从源码生成在线工作台发布包（--data/--out/--title，带版权红线自检）
+- `test-gate.py` — 口令门真实浏览器 7 项回归
+- `index.html` + `state.js` — 工作台模板（复制即用；PASS 是占位口令，部署前改一处）
 - @wf1-add-book.md — 新书入库详解
 - @wf2-eight-stages.md — 八环节生成规范与质量门
 - @wf3-gateways.md — 校验网关、数据维护与事故恢复
+- @wf4-online-workbench.md — 在线工作台发布三步、口令门设计与事故 E 复盘

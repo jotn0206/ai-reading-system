@@ -1,6 +1,6 @@
 # 一年50本书 · AI阅读执行系统
 
-把"读一本书"变成结构化产出的 WorkBuddy 技能：8 个环节（新书推荐 → 粗读 → 逐章拆解 → 全书逻辑链 → 重点推荐 → 原子笔记 → 行动清单 → 书评），金句逐字校验网关、真实页码注入、本地可视化工作台，最终产出可发布的书评。
+把"读一本书"变成结构化产出的 WorkBuddy 技能：8 个环节（新书推荐 → 粗读 → 逐章拆解 → 全书逻辑链 → 重点推荐 → 原子笔记 → 行动清单 → 书评），金句逐字校验网关、真实页码注入、本地可视化工作台，最终产出可发布的书评。想远程看进度，还能把工作台发布成带访问口令的公网链接（可选）。
 
 **核心理念**：产品出工具，不碰内容——书籍由用户自己提供（epub/PDF/粘贴文本），AI 只做加工，版权责任清晰。
 
@@ -106,7 +106,7 @@ python build.py
 ### 版本迭代流程
 
 1. 改 `ai-reading-system/` 根目录下的任意文件（SKILL.md / 脚本 / wf 文档 / 工作台模板）
-2. `python build.py` 重新出双包并同步本机技能（或 `python package_skill.py ai-reading-system dist`）
+2. `python build.py` 重新出三包并同步本机技能（构建前会硬校验 frontmatter 七件套、包内零子目录、口令未写死）
 3. 同步一份到 `~/.workbuddy/skills/ai-reading-system/` 本机自用
 4. git commit + push；市场版本号 +1 重新提审
 
@@ -118,12 +118,15 @@ ai-reading-system/          # 包内所有文件平铺在这一层，无子目�
 ├── wf1-add-book.md         # 新书入库（epub/PDF/粘贴 → 全文 → 切章 → 入库）
 ├── wf2-eight-stages.md     # 八环节生成规范、质量门、三层调整机制
 ├── wf3-gateways.md         # 校验网关原理、数据维护与事故恢复
+├── wf4-online-workbench.md # 在线工作台发布三步、口令门设计（可选）
 ├── add-book.js             # 书目入库（自动备份、防重名）
 ├── epub2fulltext.py        # EPUB → 全文 markdown
 ├── pdf2fulltext.py         # PDF → 全文 markdown（书签切章 + 真实页码标记）
 ├── split_fulltext.js       # 全文切章
 ├── pipeline.js             # 校验网关 + 页码注入 + 数据提取
 ├── save-export.js          # 工作台导出 JSON 回填
+├── publish-online.js       # 从源码生成在线工作台发布包（带版权红线自检）
+├── test-gate.py            # 口令门真实浏览器 7 项回归
 ├── index.html              # 工作台模板（复制到用户目录即可打开）
 └── state.js                # 工作台空数据模板（放用户目录的 data/ 下）
 ```
