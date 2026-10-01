@@ -1325,10 +1325,17 @@ function demoStale(state){ // 内容完整性检查：内置书存在但缺关�
   const s2=(f.stages&&f.stages[2]&&f.stages[2].data)||{};
   return !chs.some(c=>c.deepCard)||!s2.contrast||!s2.sixDims;
 }
-if(!load()||!state.books||state.books.length===0){state=demoData();state.version=DATA_VERSION;save();}
-else if((state.version||0)<DATA_VERSION||demoStale(state)){
-  // 版本迁移：data/state.js 是唯一真相，整体重播种（v8 起 localStorage 仅作缓存，不再合并保留旧浏览器数据）
+/* 发布包版本戳：publish-online.js 注入 window.READING_DATA.buildStamp
+   本地源码 state.js 没有该字段（remoteStamp=''）→ 本地行为完全不变；
+   线上发布包有该字段 → 数据一更新，所有浏览器自动重播种，解决"线上改了数据、老访客还看旧缓存"（2026-10-01）。 */
+const remoteStamp = (window.READING_DATA && window.READING_DATA.buildStamp) || '';
+const loadedCache = load();
+const stampOutdated = !!(remoteStamp && state && state.buildStamp !== remoteStamp);
+if(!loadedCache||!state.books||state.books.length===0){state=demoData();state.version=DATA_VERSION;save();}
+else if((state.version||0)<DATA_VERSION||demoStale(state)||stampOutdated){
+  // 版本迁移 / 发布包更新：data/state.js 是唯一真相，整体重播种（v8 起 localStorage 仅作缓存，不再合并保留旧浏览器数据）
   state=demoData();state.version=DATA_VERSION;save();
+  if(stampOutdated)setTimeout(()=>toast('已同步为最新数据'),400);
 }
 renderAll();
 </script>

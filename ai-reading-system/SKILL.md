@@ -1,6 +1,6 @@
 ---
 name: ai-reading-system
-version: 1.2.2
+version: 1.2.3
 display_name: 一年50本书 · AI阅读执行系统
 display_name_en: AI Reading System · 50 Books a Year
 description: >
@@ -64,8 +64,9 @@ flowchart LR
 
 ### WF4 在线工作台发布（可选）→ 读 @wf4-online-workbench.md
 
-`publish-online.js` 从源码生成发布包 → `test-gate.py` 真实浏览器跑口令门 7 项 → 上传到静态托管。
+`publish-online.js` 从源码生成发布包（注入 `buildStamp` 内容指纹）→ `test-gate.py` 真实浏览器跑口令门 7 项 → `test-stamp.py` 跑版本戳 2 项 → 上传到静态托管。
 口令门只改 `var PASS=` 一处；**发布包的任何手工改动都必须回灌源码**，否则下次重建就丢。
+**数据更新后老访客看到的可能还是旧数据**——`buildStamp` 就是为此存在的，务必用 `publish-online.js` 生成发布包（它自动注入），别手工拷 state.js。
 
 ### 书评发布
 
@@ -86,8 +87,9 @@ flowchart LR
 - 没有电子书时：配套技能 `weread-ocr-capture` 抓微信读书网页版正文（截图 + OCR；无逐页页码）
 - `pipeline.js` — 校验+页码+提取 一键收尾（--data 指定工作目录）
 - `save-export.js` — 工作台导出 JSON 回填 state.js
-- `publish-online.js` — 从源码生成在线工作台发布包（--data/--out/--title，带版权红线自检）
+- `publish-online.js` — 从源码生成在线工作台发布包（--data/--out/--title，带版权红线自检 + 注入 buildStamp 内容指纹）
 - `test-gate.py` — 口令门真实浏览器 7 项回归
+- `test-stamp.py` — 发布版本戳 2 项回归（旧缓存重播种 / 戳一致不白刷）
 - `index.html` + `state.js` — 工作台模板（复制即用；PASS 是占位口令，部署前改一处）
 - @wf1-add-book.md — 新书入库详解
 - @wf2-eight-stages.md — 八环节生成规范与质量门

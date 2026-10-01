@@ -73,10 +73,20 @@ books.forEach(b => {
 console.log(books.length + ' 本书环节检查完毕' + (bad ? '，' + bad + ' 本异常' : '，全部 8 环节齐全 ✅'));
 if (bad) console.log('   （只想发某一本：加 --title "<书名片段>" 缩小检查范围）');
 
-/* —— 落盘 —— */
+/* —— 落盘（注入发布版本戳 buildStamp）——
+   前端凭它判断"线上数据已更新"，让老访客浏览器里的旧 localStorage 缓存自动重播种。
+   只用内容哈希（不含时间）：内容没变就不打扰访客在线上做的勾选/批注。 */
+const crypto = require('crypto');
+const stamp = crypto.createHash('sha1')
+  .update(JSON.stringify(s.books) + JSON.stringify(s.profile || {}))
+  .digest('hex').slice(0, 12);
+const stateOut = '/* AI 阅读执行系统 · 发布包（自动生成，勿手改）\n'
+  + '   改数据请改源码 data/state.js 后重跑 publish-online.js */\n'
+  + 'window.READING_DATA = ' + JSON.stringify(Object.assign({}, s, { buildStamp: stamp })) + ';\n';
+console.log('发布版本戳 buildStamp:', stamp, '（数据一旦变化，访客浏览器会自动重读）');
 fs.mkdirSync(path.join(DIST, 'data'), { recursive: true });
 fs.writeFileSync(path.join(DIST, 'index.html'), src);
-fs.writeFileSync(path.join(DIST, 'data', 'state.js'), state);
+fs.writeFileSync(path.join(DIST, 'data', 'state.js'), stateOut);
 
 /* —— 复核发布包 —— */
 const out = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
@@ -86,7 +96,7 @@ console.log('发布包 JSON 复核 ✅');
 console.log('fulltext 未进包:', fs.existsSync(path.join(DIST, 'data', 'fulltext')) ? '❌ 存在' : '✅ 不存在');
 /* 真正的版权红线：state.js 里不得内嵌书全文（章节原文）。
    判据：扫描连续 ≥500 汉字的片段——正常笔记/书评远达不到，整章原文会超。 */
-const strips = (state.replace(/^[\s\S]*?window\.READING_DATA\s*=\s*/, '').match(/[一-鿿]{500,}/g) || []);
+const strips = (stateOut.replace(/^[\s\S]*?window\.READING_DATA\s*=\s*/, '').match(/[一-鿿]{500,}/g) || []);
 if (strips.length) {
   console.error('❌ state.js 内嵌了疑似书全文的连续长段（' + strips.length + ' 处，最长 ' +
     Math.max(...strips.map(t => t.length)) + ' 字）—— 全文应只留在 data/fulltext/ 不进包');
