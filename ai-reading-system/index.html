@@ -120,6 +120,8 @@
   .step .sname{white-space:nowrap}
 
   .stage-body{padding:6px 26px 30px;max-height:64vh;overflow:auto}
+  #stage-head-out{padding:0 26px}
+  #stage-head-out .stage-head{margin:16px 0 4px}
   .stage-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 12px;
     background:#fff;border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm)}
   .stage-head .l{display:flex;align-items:center;gap:10px}
@@ -284,6 +286,37 @@
     padding:16px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-sm);min-height:56px;
     text-align:left;width:100%;color:var(--ink);font-family:inherit}
   .me-btn .mi2{font-size:20px}
+
+/* =====================================================
+   P1 翻页式阅读（移动端，2026-10-01）
+   一屏一页、零纵向滚动；仅 ≤768px 生效，桌面端零影响
+   ===================================================== */
+@media(max-width:768px){
+  body{overflow:hidden}                             /* 页面级滚动由分页取代 */
+  .overlay{z-index:70;overflow:hidden}              /* 盖过 tabbar(60)，modal 自管理 */
+  .modal{display:flex;flex-direction:column;height:100dvh;min-height:0}
+  #stage-head-out{flex:none;padding:0 14px}
+  #stage-head-out .stage-head{margin:8px 0 10px}
+  /* 分页宿主：flex 列，页面包裹层吃剩余高度，控制条钉底 */
+  .paging{display:flex;flex-direction:column;overflow:hidden !important;padding:0 !important}
+  .paging>.pgwrap{flex:1;min-height:0;overflow:hidden;position:relative}
+  .paging>.pgwrap>.pg{display:none;height:100%;overflow:hidden;padding:4px 14px 10px}
+  .paging>.pgwrap>.pg.on{display:block}
+  .paging>.pgwrap>.pg.over{overflow-y:auto;-webkit-overflow-scrolling:touch}  /* 单块超一屏的兜底 */
+  /* 键盘弹出时允许当前页微滚动，避免输入框被顶到键盘下 */
+  .paging.kbd>.pgwrap>.pg.on{overflow-y:auto}
+  /* 控制条 */
+  .pgr-bar{flex:none;display:flex;align-items:center;justify-content:center;gap:16px;
+    min-height:48px;background:#fff;border-top:1px solid var(--line);
+    padding:4px 14px calc(4px + env(safe-area-inset-bottom))}
+  .pgr-btn{min-width:104px;min-height:40px;border:1px solid var(--line);border-radius:22px;
+    background:#F8FAFC;color:var(--ink);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
+  .pgr-btn:active{background:#EEF2FF;border-color:var(--blue);color:var(--blue)}
+  .pgr-btn[disabled]{opacity:.32;pointer-events:none}
+  .pgr-ind{font-size:13px;font-weight:800;color:var(--sub);min-width:52px;text-align:center}
+  /* home/agg 场景：宿主高度由 JS 定（100dvh - 头部 - tabbar） */
+  #aggview.paging,#homeview.paging{margin:0}
+}
 </style>
 <style>
   /* ---------- 访问口令门（静态站：仅防随手翻，非真鉴权） ----------
@@ -312,7 +345,6 @@
 <script>
 /* ===== 访问口令门：静态站仅防随手翻，非真鉴权，口令明文在此 ===== */
 (function(){
-  /* ↓↓↓ 部署到公网前，把下面的占位口令换成你自己的（只改这一处）↓↓↓ */
   var PASS='AIREAD2026', KEY='reading_gate_v1';
   var local=location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
   window.__gateOn=!local;               /* 本地打开不设门，免得自己碍自己 */
@@ -384,6 +416,7 @@
   </div>
 </header>
 
+<main id="homeview">
 <div class="kpis" id="kpis"></div>
 
 <div class="section-wrap">
@@ -400,6 +433,7 @@
 </div>
 
 <div class="grid" id="grid"></div>
+</main>
 
 <!-- Modal container -->
 <div class="overlay" id="overlay">
@@ -515,7 +549,7 @@ function load(){
 
 /* ---------- 内置数据（P0 外置：真实数据在 data/state.js） ---------- */
 function demoData(){
-  if(!window.READING_DATA){alert('未找到 data/state.js —— 数据文件缺失或未通过 http 服务打开');return {version:DATA_VERSION,profile:{name:''},books:[]};}
+  if(!window.READING_DATA){alert('未找到 data/state.js —— 数据文件缺失或未通过 http 服务打开');return {version:DATA_VERSION,profile:{name:'读者'},books:[]};}
   return JSON.parse(JSON.stringify(window.READING_DATA));
 }
 function mkBook(title,author,color,emoji,source,tags,stageArr){
@@ -588,6 +622,7 @@ function renderGrid(){
   }
   if(list.length===0&&ghosts===0)html='<div class="empty">还没有符合筛选条件的书，点击右上角「新增书籍」开始。</div>';
   grid.innerHTML=html;
+  Pager.refresh($('#homeview'));   // 筛选/搜索改变内容高度 → 重排分页（保持页码）
 }
 function shade(hex,p){ // lighten/darken hex
   if(!hex||typeof hex!=='string'||!/^#[0-9a-fA-F]{6}$/.test(hex))hex='#64748B'; // fallback slate
@@ -595,7 +630,10 @@ function shade(hex,p){ // lighten/darken hex
   r=Math.max(0,Math.min(255,r+p));g=Math.max(0,Math.min(255,g+p));b=Math.max(0,Math.min(255,b+p));
   return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
 }
-function renderAll(){renderKPIs();renderDist();renderGrid();}
+function renderAll(){
+  renderKPIs();renderDist();renderGrid();
+  if(currentTab==='home')Pager.mount($('#homeview'),'tab');
+}
 
 /* =========================================================
    BOOK DETAIL MODAL
@@ -603,8 +641,8 @@ function renderAll(){renderKPIs();renderDist();renderGrid();}
 function openBook(id){
   const b=state.books.find(x=>x.id===id);if(!b)return;
   currentBookId=id;currentStage=currentStageOf(b);
+  $('#overlay').classList.add('show');   // 先显示再渲染，分页器才能量到真实高度
   renderModal();
-  $('#overlay').classList.add('show');
 }
 function renderModal(){
   const b=state.books.find(x=>x.id===currentBookId);if(!b)return;
@@ -617,6 +655,7 @@ function renderModal(){
       <button class="x" data-action="close">✕</button>
     </div>
     <div class="stepper">${stepper}</div>
+    <div id="stage-head-out"></div>
     <div class="stage-body" id="stage-body"></div>`;
   renderStage();
 }
@@ -629,7 +668,9 @@ function renderStage(){
     <div class="status-sel">
       ${STATUS.map(v=>`<span class="st ${v} ${st.status===v?'on':''}" data-action="set-status" data-v="${v}">${STATUS_TXT[v]}</span>`).join('')}
     </div></div>`;
-  $('#stage-body').innerHTML=head+renderStageBody(b,s.id);
+  $('#stage-head-out').innerHTML=head;          // 环节头固定在分页区外，不跟着翻
+  $('#stage-body').innerHTML=renderStageBody(b,s.id);
+  Pager.mount($('#stage-body'),'modal');
 }
 function renderStageBody(b,sid){
   const d=bookStage(b,sid).data;
@@ -880,7 +921,7 @@ function stage7(b,d){
   `;
 }
 
-/* ----- Stage 8: 书评发布（书评创作与发布工作流） ----- */
+/* ----- Stage 8: 书评发布（公众号发布工作流） ----- */
 function stage8(b,d){
   d.publishStatus=d.publishStatus||'草稿';
   const checklist=[
@@ -892,7 +933,7 @@ function stage8(b,d){
   ];
   let h=`
   <div class="field"><label>书评草稿</label><textarea class="f" data-field="stages.8.data.draft" style="min-height:160px" placeholder="以「可视化拆书助手」的拆书成果为素材，结合个人理解撰写书评…">${esc(d.draft)}</textarea></div>
-  <div class="tbl-note">📣 发布流程参考《书评创作与发布工作流》：写作 → 去AI味 → 爆款检查 → 朱红排版 → API发布 → 归档 + 知识回填。<b>必须经用户确认后方可发布。</b></div>
+  <div class="tbl-note">📣 发布流程参考《内容发布工作流》：写作 → 去AI味 → 爆款检查 → 朱红排版 → API发布 → 归档 + 知识回填。<b>必须经用户确认后方可发布。</b></div>
   <div class="pub-gate">
     <h4>⚠️ 发布前确认清单（五道网关）</h4>
     <ol>
@@ -918,6 +959,103 @@ function stage8(b,d){
 }
 
 /* =========================================================
+   P1 翻页式阅读（移动端）
+   把宿主容器的直接子元素按可用高度贪心切页：
+   一屏一页、底部控制条、左右滑动/边缘点按翻页。
+   单块物理超一屏 → 独占一页并允许页内微滚动（兜底）。
+   每次 render* 重设 innerHTML 后调用 Pager.mount 即可。
+   ========================================================= */
+const Pager={
+  hosts:[],                               // 已分页的宿主，供 resize 重排
+  _oh(el){const cs=getComputedStyle(el);  // 元素占位高 = 盒高 + 上下外边距
+    return el.offsetHeight+parseFloat(cs.marginTop||0)+parseFloat(cs.marginBottom||0);},
+  _flatten(host){                          // 解包：把 .pg 里的子元素倒回宿主
+    const wrap=host.querySelector(':scope>.pgwrap');
+    if(wrap){[...wrap.querySelectorAll(':scope>.pg')].forEach(pg=>{
+      while(pg.firstChild)host.insertBefore(pg.firstChild,wrap);});wrap.remove();}
+    const bar=host.querySelector(':scope>.pgr-bar');if(bar)bar.remove();
+    host.classList.remove('paging','kbd');host.style.height='';
+  },
+  mount(host,mode){                        // mode: 'modal' | 'tab'
+    if(!host)return;
+    this._flatten(host);
+    this.hosts=this.hosts.filter(h=>h.el!==host);
+    if(!isMobile())return;                 // 桌面端保持原滚动布局
+    if(host.offsetParent===null&&mode!=='modal')return; // 隐藏的宿主不测
+    host.classList.add('paging');
+    if(mode==='tab'){                      // 高度 = 视口 - 宿主顶 - tabbar
+      const tb=$('#tabbar');const tbH=tb?tb.offsetHeight:0;
+      host.style.height=Math.max(200,window.innerHeight-host.getBoundingClientRect().top-tbH)+'px';
+    }
+    const H=host.clientHeight;
+    const kids=[...host.children].filter(el=>!el.classList.contains('pgr-bar'));
+    if(!kids.length){return;}
+    // 贪心切页
+    const pages=[];let cur=[],used=0;
+    kids.forEach(el=>{
+      const h=this._oh(el);
+      if(used>0&&used+h>H+2){pages.push(cur);cur=[];used=0;}
+      cur.push(el);used+=h;
+    });
+    if(cur.length)pages.push(cur);
+    // 包裹
+    const wrap=document.createElement('div');wrap.className='pgwrap';
+    pages.forEach(els=>{
+      const pg=document.createElement('div');pg.className='pg';
+      if(els.length===1&&this._oh(els[0])>H+2)pg.classList.add('over');
+      els.forEach(e=>pg.appendChild(e));wrap.appendChild(pg);
+    });
+    host.appendChild(wrap);
+    const rec={el:host,mode,cur:Math.min(host._pgCur||0,pages.length-1),total:pages.length};
+    // 控制条（仅多页时显示）
+    if(pages.length>1){
+      const bar=document.createElement('div');bar.className='pgr-bar';
+      bar.innerHTML=`<button class="pgr-btn" data-dir="-1">‹ 上一页</button><span class="pgr-ind"></span><button class="pgr-btn" data-dir="1">下一页 ›</button>`;
+      bar.addEventListener('click',e=>{const b=e.target.closest('.pgr-btn');if(b)this.go(rec,+b.dataset.dir);});
+      host.appendChild(bar);
+    }
+    this._bind(rec);this._show(rec);this.hosts.push(rec);
+  },
+  refresh(host){const rec=this.hosts.find(h=>h.el===host);
+    if(rec){host._pgCur=rec.cur;this.mount(host,rec.mode);}},
+  remountAll(){this.hosts.slice().forEach(rec=>{rec.el._pgCur=rec.cur;this.mount(rec.el,rec.mode);});},
+  go(rec,dir){this._show(rec,rec.cur+dir);},
+  _show(rec,to){
+    rec.cur=Math.max(0,Math.min(rec.total-1,to===undefined?rec.cur:to));
+    const pgs=rec.el.querySelectorAll(':scope>.pgwrap>.pg');
+    pgs.forEach((pg,i)=>pg.classList.toggle('on',i===rec.cur));
+    const ind=rec.el.querySelector(':scope>.pgr-bar .pgr-ind');
+    if(ind)ind.textContent=(rec.cur+1)+' / '+rec.total;
+    const btns=rec.el.querySelectorAll(':scope>.pgr-bar .pgr-btn');
+    if(btns[0])btns[0].disabled=rec.cur===0;
+    if(btns[1])btns[1].disabled=rec.cur===rec.total-1;
+    rec.el._pgCur=rec.cur;
+  },
+  _bind(rec){
+    const host=rec.el;if(host._pgBound)return;host._pgBound=true;
+    // 左右滑动翻页
+    let sx=0,sy=0;
+    host.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;},{passive:true});
+    host.addEventListener('touchend',e=>{
+      const t=e.changedTouches[0];const dx=t.clientX-sx,dy=t.clientY-sy;
+      if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)this.go(rec,dx<0?1:-1);
+    },{passive:true});
+    // 边缘点按翻页（不抢输入控件/按钮的点击）
+    host.addEventListener('click',e=>{
+      if(e.target.closest('input,textarea,select,button,label,a,[data-action],.check'))return;
+      if(window.getSelection&&String(window.getSelection()))return;
+      const r=host.getBoundingClientRect();const x=e.clientX-r.left;
+      if(x<r.width*0.16)this.go(rec,-1);
+      else if(x>r.width*0.84)this.go(rec,1);
+    });
+    // 键盘弹出兜底：聚焦输入控件时允许页内滚动
+    host.addEventListener('focusin',e=>{
+      if(e.target.closest('input,textarea,select'))host.classList.add('kbd');});
+    host.addEventListener('focusout',()=>{host.classList.remove('kbd');host.scrollTop=0;});
+  }
+};
+
+/* =========================================================
    P0 底部 Tab + 聚合视图（移动端）
    ========================================================= */
 let currentTab='home';
@@ -927,9 +1065,9 @@ function switchTab(t){
   currentTab=t;
   $$('#tabbar .tab').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));
   const home=t==='home';
-  ['#kpis','.section-wrap','.toolbar','#grid'].forEach(s=>{const el=$(s);if(el)el.style.display=home?'':'none'});
+  const hv=$('#homeview');if(hv)hv.style.display=home?'':'none';
   $('#aggview').style.display=home?'none':'';
-  if(!home)renderAgg(t);
+  if(home)Pager.mount($('#homeview'),'tab');else renderAgg(t);
   history.replaceState(null,'','#tab='+t);
   window.scrollTo(0,0);
 }
@@ -939,6 +1077,7 @@ function renderAgg(t){
   else if(t==='notes')v.innerHTML=aggNotes();
   else if(t==='actions')v.innerHTML=aggActions();
   else if(t==='me')v.innerHTML=aggMe();
+  Pager.mount(v,'tab');
 }
 /* 环节 Tab：书 × 8 环节矩阵，点击直达该书该环节 */
 function aggStages(){
@@ -1033,8 +1172,10 @@ document.addEventListener('DOMContentLoaded',function(){
   const m=(location.hash||'').match(/tab=(\w+)/);
   if(m&&isMobile())switchTab(m[1]);
 });
+let _rszT=null;
 window.addEventListener('resize',function(){
   if(!isMobile()&&currentTab!=='home')switchTab('home');
+  clearTimeout(_rszT);_rszT=setTimeout(()=>Pager.remountAll(),160);   // 旋转/改宽度后重排分页
 });
 
 /* =========================================================
@@ -1104,6 +1245,7 @@ function openAddBook(){
       <button class="btn btn-primary" style="width:100%;padding:12px" id="nb-save">入库并进入拆解流</button>
     </div>`;
   $('#overlay').classList.add('show');
+  Pager.mount($('#modal .stage-body'),'modal');
   $('#nb-save').onclick=()=>{
     const title=$('#nb-title').value.trim();if(!title){toast('请填写书名');return;}
     const b=mkBook(title,$('#nb-author').value.trim(),PALETTE[state.books.length%PALETTE.length],'📖',$('#nb-source').value,(($('#nb-tags').value)||'').split(/[,，]/).map(s=>s.trim()).filter(Boolean),[]);
@@ -1127,6 +1269,7 @@ function openProfile(){
       <button class="btn btn-primary" style="width:100%;padding:12px" id="pf-save">保存画像</button>
     </div>`;
   $('#overlay').classList.add('show');
+  Pager.mount($('#modal .stage-body'),'modal');
   $('#pf-save').onclick=()=>{
     state.profile={name:$('#pf-name').value.trim(),roles:$('#pf-roles').value.split('\n').map(s=>s.trim()).filter(Boolean),goals:$('#pf-goals').value.split('\n').map(s=>s.trim()).filter(Boolean),interests:$('#pf-interests').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean),purpose:$('#pf-purpose').value.trim()};
     save();toast('身份画像已保存');renderAll();
@@ -1147,11 +1290,11 @@ function openPubConfirm(){
       </div>
       <div class="field"><label>发布后 media_id（可选，发布成功回填）</label><input class="f" id="pm-id" value="${esc(d.mediaId||'')}" placeholder="发布成功返回的 media_id"></div>
       <button class="btn btn-primary" style="width:100%;padding:13px" id="pm-do">✅ 确认发布（标记为已发布 + 归档）</button>
-      <div class="tbl-note" style="margin-top:12px">说明：本工作台只负责状态流转与记录。实际发布请用你自己的发布工具（如公众号发布技能的 API 通道）：先备好封面图取 <code>thumb_media_id</code>，确认无误后再发出；<b>发布动作必须经用户确认</b>。完成后把 <code>media_id</code> 回填至此，状态即流转为「已发布」。</div>
+      <div class="tbl-note" style="margin-top:12px">说明：本工作台负责状态流转与记录。实际 API 发布请用你自己的公众号发布工具执行；完成后将 media_id 回填至此，状态即流转为「已发布」。</div>
     </div>`;
+  Pager.mount($('#modal .stage-body'),'modal');
   $('#pm-do').onclick=()=>{
-    if(!($('#c1').checked&&$('#c2').checked&&$('#c3').checked&&$('#c4').checked)){toast('请先勾选全部确认项');return;}
-    d.publishStatus='已发布';d.publishDate=today();d.mediaId=$('#pm-id').value.trim()||d.mediaId||'待回填';
+    if(!($('#c1').checked&&$('#c2').checked&&$('#c3').checked&&$('#c4').checked)){toast('请先勾选全部确认项');return;}    d.publishStatus='已发布';d.publishDate=today();d.mediaId=$('#pm-id').value.trim()||d.mediaId||'待回填';
     d.archived=true;save();toast('已标记为已发布');renderStage();renderAll();
   };
 }
