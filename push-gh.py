@@ -16,6 +16,7 @@
 import base64
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.request
@@ -46,6 +47,27 @@ def gh(method, path, body=None):
         print(f'❌ {method} {path} → HTTP {e.code}')
         print(e.read().decode()[:600])
         raise
+
+
+def commit_message(added, modified, to_delete):
+    """生成提交信息：版本号从 SKILL.md 现读，避免硬编码 message 与版本脱节（2026-10-01 修正）
+    可用 --note "补充说明" 追加一行。"""
+    ver = '?'
+    try:
+        text = open(os.path.join(SRC, 'SKILL.md'), encoding='utf-8').read()
+        m = re.search(r'^version:\s*(\S+)', text, re.M)
+        if m:
+            ver = m.group(1)
+    except OSError:
+        pass
+    paths = [p for p, _ in added + modified] + [d['path'] for d in to_delete]
+    head = f'chore(skill): v{ver} 同步技能包'
+    lines = [head, '', f'- 变更文件 {len(paths)} 个：' + '、'.join(paths[:8]) + (' …' if len(paths) > 8 else '')]
+    if '--note' in sys.argv:
+        i = sys.argv.index('--note')
+        if i + 1 < len(sys.argv):
+            lines.append('- ' + sys.argv[i + 1])
+    return '\n'.join(lines)
 
 
 def main():
@@ -116,12 +138,7 @@ def main():
     newblobs = [{'path': p, 'mode': '100644', 'type': 'blob', 'sha': sha} for p, sha in added + modified]
     tree = gh('POST', 'git/trees', {'base_tree': remote['sha'], 'tree': newblobs + to_delete})
     commit = gh('POST', 'git/commits', {
-        'message': 'chore(skill): v1.1.0 同步在线工作台发布链路与口令门修复\n\n'
-                   '- index.html 同步源码（口令门进源码 + 事件绑进 DOMContentLoaded）\n'
-                   '- 新增 publish-online.js（从源码生成发布包 + 版权红线自检）\n'
-                   '- 新增 test-gate.py（口令门真实浏览器 7 项回归）\n'
-                   '- 新增 wf4-online-workbench.md\n'
-                   '- 口令改占位符 AIREAD2026；build.py 加占位符/盘符/版权三道闸',
+        'message': commit_message(added, modified, to_delete),
         'tree': tree['sha'],
         'parents': [remote['sha']],
     })

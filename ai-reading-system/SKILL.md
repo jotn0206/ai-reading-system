@@ -1,6 +1,6 @@
 ---
 name: ai-reading-system
-version: 1.2.1
+version: 1.2.2
 display_name: 一年50本书 · AI阅读执行系统
 display_name_en: AI Reading System · 50 Books a Year
 description: >
@@ -9,11 +9,12 @@ description: >
   当用户说「拆书」「拆解这本书」「读书笔记」「逐章拆解」「做这本书的阅读计划」「重点章节推荐」「原子笔记」
   「生成书评」「这本书怎么读」「新书入库」「跑阅读系统」「用 AI 一句话拆解一本书」，
   或提供 epub / PDF / 书名 / 链接希望系统化精读产出，
+  或说自己没有这本书的电子书、只能在微信读书里读（走网页版 OCR 抓正文的兜底路线），
   或说「把工作台发布到线上」「在线工作台」「部署阅读工作台」「工作台口令」时使用。
 description_zh: >
   把「读一本书」变成结构化产出：8 个环节（新书推荐→粗读→逐章拆解→逻辑链→重点推荐→原子笔记→行动清单→书评）、
   金句逐字校验、真实页码注入、本地可视化工作台，最终生成可发布的书评；可选把工作台发布成带访问口令的公网链接。
-  适合想系统化精读一本书、并沉淀成读书笔记与内容的人。
+  没有电子书也能跑：可配合微信读书网页版 OCR 抓正文。适合想系统化精读一本书、并沉淀成读书笔记与内容的人。
 description_en: >
   Turn reading a book into structured output: 8 stages from book intake and overview to chapter-by-chapter
   breakdowns, logic chains, personalized chapter recommendations, Zettelkasten atomic notes, action lists,
@@ -49,6 +50,7 @@ flowchart LR
 ### WF1 新书入库 → 读 @wf1-add-book.md
 
 用户给 epub / PDF / 粘贴文本 → 转全文 md → `split_fulltext.js` 切章 → `add-book.js` 入库。
+**用户没有电子书但微信读书里有**：走 OCR 兜底路线（配套技能 `weread-ocr-capture`），详见 wf1 §1B——这条路线**没有逐页页码**，只能标章级区间，必须如实告知用户。
 铁律：书名三处逐字一致；只处理用户自己提供的书。
 
 ### WF2 八环节执行 → 读 @wf2-eight-stages.md
@@ -81,6 +83,7 @@ flowchart LR
 - `epub2fulltext.py` — EPUB → 全文 md
 - `pdf2fulltext.py` — PDF → 全文 md（书签驱动切章 + 真实页码标记）
 - `split_fulltext.js` — 全文切章
+- 没有电子书时：配套技能 `weread-ocr-capture` 抓微信读书网页版正文（截图 + OCR；无逐页页码）
 - `pipeline.js` — 校验+页码+提取 一键收尾（--data 指定工作目录）
 - `save-export.js` — 工作台导出 JSON 回填 state.js
 - `publish-online.js` — 从源码生成在线工作台发布包（--data/--out/--title，带版权红线自检）

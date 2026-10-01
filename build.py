@@ -172,9 +172,18 @@ def main():
 
     # 3. 本机安装（frontmatter 精简版）
     dest = LOCAL_SKILLS / SKILL_NAME
-    if dest.exists():
-        shutil.rmtree(dest)
-    shutil.copytree(SRC, dest)
+    # 注意：不要「先 rmtree 再 copytree」——某些环境（WorkBuddy 沙箱 / 系统回收站失败）
+    # 会在 rmtree 抛错时把目标目录删掉一半，导致本机技能目录整体丢失（2026-10-01 事故）。
+    # 改为幂等覆盖：目标已存在的文件被同名覆盖，源包已删除的旧文件尝试清理但失败不致命。
+    dest.mkdir(parents=True, exist_ok=True)
+    src_files = {p.relative_to(SRC).as_posix() for p in SRC.rglob('*') if p.is_file()}
+    for p in sorted(dest.rglob('*'), reverse=True):
+        if p.is_file() and p.relative_to(dest).as_posix() not in src_files:
+            try:
+                p.unlink()
+            except OSError:
+                pass
+    shutil.copytree(SRC, dest, dirs_exist_ok=True)
     (dest / 'SKILL.md').write_text(local_md, encoding='utf-8')
 
     for p in (DIST / f'{SKILL_NAME}.skill', DIST / f'{SKILL_NAME}-marketplace.zip',
