@@ -191,6 +191,99 @@
   .profile-box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);margin:10px 0}
   .kv{font-size:13px;margin:4px 0}
   .kv b{color:var(--ink)}
+
+  /* =====================================================
+     P0 移动端优化（2026-10-01）
+     原则：全部 override，桌面端零影响；≤768px 生效
+     ===================================================== */
+  @media(max-width:768px){
+    body{font-size:16px;line-height:1.65}
+    header.top{padding:18px 16px 14px}
+    .brand h1{font-size:19px}
+    .brand p{font-size:13px}
+    .top-actions{display:none}                    /* 操作收纳进「我的」Tab */
+    .kpis{padding:0 14px;gap:10px;grid-template-columns:repeat(2,1fr);margin:-18px 0 6px}
+    .kpi{padding:12px 14px}
+    .kpi .num{font-size:24px}
+    .kpi .lbl{font-size:12px}
+    .kpi:nth-child(5){display:none}               /* 手机首屏减负，统计见「我的」 */
+    .section-wrap{padding:12px 14px 4px}
+    .sec-title{font-size:15px}
+    .dist{grid-template-columns:repeat(4,1fr);gap:8px;padding:12px}
+    .dist .stack{height:72px}
+    .dist .cnt{font-size:17px}
+    .dist .stage{font-size:11px}
+    .toolbar{padding:10px 14px 4px;gap:8px}
+    .toolbar input{font-size:16px;padding:11px 12px} /* 16px 防 iOS 聚焦自动放大 */
+    .chip{font-size:13px;padding:10px 14px;min-height:40px;display:inline-flex;align-items:center}
+    .grid{grid-template-columns:1fr;gap:12px;padding:12px 14px calc(80px + env(safe-area-inset-bottom))}
+    .book .cover{height:64px}
+    .ghost{min-height:120px}
+    /* 弹窗全屏化 */
+    .overlay{padding:0;align-items:stretch}
+    .modal{max-width:none;border-radius:0;min-height:100vh}
+    .modal-head{padding:14px 16px;position:sticky;top:0;z-index:5}
+    .modal-head h2{font-size:17px}
+    .modal-head .x{width:40px;height:40px}
+    .stepper{flex-wrap:nowrap;overflow-x:auto;padding:10px 14px 4px;-webkit-overflow-scrolling:touch}
+    .step{padding:9px 12px;font-size:13px;min-height:44px;flex:none}
+    .stage-body{padding:4px 14px calc(34px + env(safe-area-inset-bottom));max-height:none}
+    .stage-head{flex-direction:column;align-items:flex-start;gap:10px}
+    .btn,.add-btn{min-height:44px;font-size:14px;padding:11px 16px}
+    input.f,textarea.f,select.f{font-size:16px;padding:12px}  /* 防 iOS 缩放 */
+    .st{font-size:13px;padding:9px 14px;min-height:40px}
+    .del{min-height:36px;padding:8px 12px;font-size:13px}
+    .md-preview table{font-size:13.5px}
+    .md-preview th,.md-preview td{padding:7px 9px}
+    .check{font-size:15px;padding:6px 0;min-height:44px;align-items:center}
+    .check input{width:20px;height:20px}
+    .mini{font-size:12.5px}
+    .field label{font-size:14px}
+    .tbl-note{font-size:13px}
+    .toast{bottom:calc(74px + env(safe-area-inset-bottom))}
+  }
+
+  /* 底部 Tab（仅 ≤768px 显示） */
+  #tabbar{display:none}
+  @media(max-width:768px){
+    #tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fff;
+      border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);
+      box-shadow:0 -4px 18px rgba(17,24,39,.08)}
+    #tabbar .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+      padding:8px 0 6px;font-size:11px;color:var(--sub);font-weight:700;cursor:pointer;
+      min-height:54px;justify-content:center;border:none;background:none;font-family:inherit}
+    #tabbar .tab .ti{font-size:19px;line-height:1}
+    #tabbar .tab.on{color:var(--blue)}
+  }
+
+  /* 聚合视图（Tab 页） */
+  #aggview{padding:14px 14px calc(84px + env(safe-area-inset-bottom))}
+  .agg-book{background:#fff;border-radius:var(--r-sm);box-shadow:var(--shadow-sm);padding:12px 14px;margin-bottom:12px}
+  .agg-book .bt{font-weight:800;font-size:15px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .agg-book .bt .pc{font-size:12px;color:var(--sub);font-weight:700;white-space:nowrap}
+  .agg-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .agg-step{border:1px solid var(--line);border-radius:10px;padding:9px 6px;text-align:center;font-size:12px;
+    color:var(--sub);background:#FAFAFC;cursor:pointer;min-height:44px}
+  .agg-step.done{background:#ECFDF5;border-color:#A7F3D0;color:#059669}
+  .agg-step.doing{background:#EFF6FF;border-color:#BFDBFE;color:#2563EB}
+  .agg-filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .note-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow-sm)}
+  .note-card .nh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+  .note-card .nt{font-weight:800;font-size:15px}
+  .note-card .tp{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;background:#EEF2FF;color:var(--blue);white-space:nowrap}
+  .note-card .ol{font-size:14px;margin:4px 0}
+  .note-card .pt{font-size:13px;color:var(--sub);white-space:pre-line}
+  .note-card .src{font-size:12px;color:var(--sub);margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}
+  .act-item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow-sm)}
+  .act-item .ck{display:flex;gap:10px;align-items:flex-start;font-size:15px;font-weight:700;cursor:pointer}
+  .act-item .ck input{width:20px;height:20px;margin-top:2px;accent-color:var(--green);flex:none}
+  .act-item .meta2{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .act-item .vf{font-size:12.5px;color:var(--sub);margin-top:6px}
+  .me-list{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+  .me-btn{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;
+    padding:16px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-sm);min-height:56px;
+    text-align:left;width:100%;color:var(--ink);font-family:inherit}
+  .me-btn .mi2{font-size:20px}
 </style>
 <style>
   /* ---------- 访问口令门（静态站：仅防随手翻，非真鉴权） ----------
@@ -312,6 +405,18 @@
 <div class="overlay" id="overlay">
   <div class="modal" id="modal"></div>
 </div>
+
+<!-- 聚合视图（移动端 Tab 页容器，P0 新增） -->
+<main id="aggview" style="display:none"></main>
+
+<!-- 底部 Tab（仅移动端显示，P0 新增） -->
+<nav id="tabbar">
+  <button class="tab on" data-action="tab" data-tab="home"><span class="ti">🏠</span>首页</button>
+  <button class="tab" data-action="tab" data-tab="stages"><span class="ti">📑</span>环节</button>
+  <button class="tab" data-action="tab" data-tab="notes"><span class="ti">📇</span>笔记</button>
+  <button class="tab" data-action="tab" data-tab="actions"><span class="ti">✅</span>行动</button>
+  <button class="tab" data-action="tab" data-tab="me"><span class="ti">👤</span>我的</button>
+</nav>
 
 <div class="toast" id="toast"></div>
 <input type="file" id="file-input" accept="application/json" style="display:none">
@@ -787,7 +892,7 @@ function stage8(b,d){
   ];
   let h=`
   <div class="field"><label>书评草稿</label><textarea class="f" data-field="stages.8.data.draft" style="min-height:160px" placeholder="以「可视化拆书助手」的拆书成果为素材，结合个人理解撰写书评…">${esc(d.draft)}</textarea></div>
-  <div class="tbl-note">📣 发布流程参考 dwjotn《内容发布工作流》：写作 → 去AI味 → 爆款检查 → 朱红排版 → API发布 → 归档 + 知识回填。<b>必须经用户确认后方可发布。</b></div>
+  <div class="tbl-note">📣 发布流程参考《书评创作与发布工作流》：写作 → 去AI味 → 爆款检查 → 朱红排版 → API发布 → 归档 + 知识回填。<b>必须经用户确认后方可发布。</b></div>
   <div class="pub-gate">
     <h4>⚠️ 发布前确认清单（五道网关）</h4>
     <ol>
@@ -813,12 +918,136 @@ function stage8(b,d){
 }
 
 /* =========================================================
+   P0 底部 Tab + 聚合视图（移动端）
+   ========================================================= */
+let currentTab='home';
+let noteFilter='all';
+function isMobile(){return window.matchMedia('(max-width:768px)').matches}
+function switchTab(t){
+  currentTab=t;
+  $$('#tabbar .tab').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));
+  const home=t==='home';
+  ['#kpis','.section-wrap','.toolbar','#grid'].forEach(s=>{const el=$(s);if(el)el.style.display=home?'':'none'});
+  $('#aggview').style.display=home?'none':'';
+  if(!home)renderAgg(t);
+  history.replaceState(null,'','#tab='+t);
+  window.scrollTo(0,0);
+}
+function renderAgg(t){
+  const v=$('#aggview');
+  if(t==='stages')v.innerHTML=aggStages();
+  else if(t==='notes')v.innerHTML=aggNotes();
+  else if(t==='actions')v.innerHTML=aggActions();
+  else if(t==='me')v.innerHTML=aggMe();
+}
+/* 环节 Tab：书 × 8 环节矩阵，点击直达该书该环节 */
+function aggStages(){
+  if(!state.books.length)return '<div class="empty">还没有入库书籍。</div>';
+  return state.books.map(b=>{
+    const pct=bookProgress(b);
+    const steps=STAGES.map(s=>{
+      const st=bookStage(b,s.id).status;
+      return `<div class="agg-step ${st}" data-action="agg-open" data-book="${b.id}" data-sid="${s.id}">${s.icon}<br>${s.name}</div>`;
+    }).join('');
+    return `<div class="agg-book">
+      <div class="bt"><span>${b.coverEmoji||'📖'} ${esc(b.title)}</span><span class="pc">${pct}%</span></div>
+      <div class="agg-steps">${steps}</div></div>`;
+  }).join('');
+}
+/* 笔记 Tab：聚合所有书的原子卡（只读），按类型筛选 */
+function aggNotes(){
+  const TYPES=['概念卡','行动卡','观点卡'];
+  const chips=['all',...TYPES].map(v=>`<span class="chip ${noteFilter===v?'on':''}" data-action="note-filter" data-v="${v}">${v==='all'?'全部':v}</span>`).join('');
+  let out='';
+  let total=0;
+  state.books.forEach(b=>{
+    const cards=(getPath(b,'stages.6.data.cards')||[]);
+    cards.forEach(c=>{
+      const ty=c.type||'概念卡';
+      if(noteFilter!=='all'&&ty!==noteFilter)return;
+      total++;
+      out+=`<div class="note-card">
+        <div class="nh"><span class="nt">${esc(c.concept||'(未命名)')}</span><span class="tp">${ty}</span></div>
+        ${c.oneLiner?`<div class="ol">💡 ${esc(c.oneLiner)}</div>`:''}
+        ${c.points?`<div class="pt">${esc(c.points)}</div>`:''}
+        <div class="src">${b.coverEmoji||'📖'} 《${esc(b.title)}》${c.source?' · '+esc(c.source):''}</div>
+      </div>`;
+    });
+  });
+  return `<div class="agg-filter">${chips}</div>`
+    +(total?out:'<div class="empty">还没有'+(noteFilter==='all'?'':noteFilter)+'卡片。原子卡在「环节6」里创建。</div>');
+}
+/* 行动 Tab：聚合所有书的行动清单，可勾选（写回 state） */
+function aggActions(){
+  const LAYERS=['认知层','决策层','行动层','信息素养层'];
+  let any=false,out='';
+  LAYERS.forEach(layer=>{
+    let items='';
+    state.books.forEach(b=>{
+      const acts=(getPath(b,'stages.7.data.actions')||[]);
+      acts.forEach((a,i)=>{
+        if((a.layer||'行动层')!==layer)return;
+        any=true;
+        items+=`<div class="act-item">
+          <label class="ck"><input type="checkbox" data-action="agg-toggle" data-book="${b.id}" data-i="${i}" ${a.done?'checked':''}>
+            <span style="${a.done?'text-decoration:line-through;color:var(--sub)':''}">${esc(a.content)}</span></label>
+          <div class="meta2">
+            <span class="pill">${a.priority||'P1'}</span>
+            <span class="pill hit">${b.coverEmoji||'📖'} ${esc(b.title)}</span>
+          </div>
+          ${a.verify?`<div class="vf">✔️ 做到算数：${esc(a.verify)}</div>`:''}
+        </div>`;
+      });
+    });
+    if(items)out+=`<div class="sec-title" style="padding:0 2px"><span class="bar"></span>${layer}</div>`+items;
+  });
+  return out||'<div class="empty">还没有行动项。行动清单在「环节7」里创建。</div>';
+}
+/* 我的 Tab：身份画像 + 数据管理（header 按钮的移动端落点） */
+function aggMe(){
+  const total=state.books.length;
+  const totalDone=state.books.reduce((a,b)=>a+doneCount(b),0);
+  const totalCards=state.books.reduce((a,b)=>a+((getPath(b,'stages.6.data.cards')||[]).length),0);
+  const totalActs=state.books.reduce((a,b)=>a+((getPath(b,'stages.7.data.actions')||[]).length),0);
+  const p=state.profile||{};
+  return `
+  <div class="profile-box">
+    <div class="kv"><b>🎯 身份画像：</b>${esc(p.name||'未填写')}</div>
+    <div class="kv" style="color:var(--sub);font-size:12.5px">角色 ${(p.roles||[]).length} · 目标 ${(p.goals||[]).length} · 兴趣 ${(p.interests||[]).length}${p.name?'':'（建议先填写，环节5/6/8 的个性化靠它）'}</div>
+  </div>
+  <div class="profile-box">
+    <div class="kv"><b>📊 数据总览</b></div>
+    <div class="kv">入库 ${total} 本 · 完成环节 ${totalDone} · 原子卡 ${totalCards} 张 · 行动 ${totalActs} 项</div>
+  </div>
+  <div class="me-list">
+    <button class="me-btn" data-action="profile"><span class="mi2">🎯</span>编辑身份画像</button>
+    <button class="me-btn" data-action="add-book"><span class="mi2">＋</span>新增书籍</button>
+    <button class="me-btn" data-action="export"><span class="mi2">⬇</span>导出数据（JSON 备份）</button>
+    <button class="me-btn" data-action="import"><span class="mi2">⬆</span>导入数据</button>
+    <button class="me-btn" data-action="reset"><span class="mi2">↺</span>重置为示例数据</button>
+  </div>
+  <div class="empty" style="font-size:12px">数据保存在本机浏览器，记得定期导出备份</div>`;
+}
+/* 初始化：hash 恢复 Tab（仅移动端） */
+document.addEventListener('DOMContentLoaded',function(){
+  const m=(location.hash||'').match(/tab=(\w+)/);
+  if(m&&isMobile())switchTab(m[1]);
+});
+window.addEventListener('resize',function(){
+  if(!isMobile()&&currentTab!=='home')switchTab('home');
+});
+
+/* =========================================================
    EVENTS
    ========================================================= */
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-action]');
   if(!t)return;
   const a=t.dataset.action;
+  if(a==='tab'){switchTab(t.dataset.tab);return;}
+  if(a==='agg-open'){openBook(t.dataset.book);currentStage=+t.dataset.sid;renderModal();return;}
+  if(a==='agg-toggle'){const b=state.books.find(x=>x.id===t.dataset.book);const arr=getPath(b,'stages.7.data.actions');if(arr&&arr[+t.dataset.i]){arr[+t.dataset.i].done=!arr[+t.dataset.i].done;save();renderAgg('actions');renderAll();}return;}
+  if(a==='note-filter'){noteFilter=t.dataset.v;renderAgg('notes');return;}
   if(a==='close'){$('#overlay').classList.remove('show');renderAll();return;}
   if(a==='add-book'){openAddBook();return;}
   if(a==='profile'){openProfile();return;}

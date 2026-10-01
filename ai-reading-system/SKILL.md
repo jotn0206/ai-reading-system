@@ -1,6 +1,6 @@
 ---
 name: ai-reading-system
-version: 1.1.0
+version: 1.2.0
 display_name: 一年50本书 · AI阅读执行系统
 display_name_en: AI Reading System · 50 Books a Year
 description: >
