@@ -39,11 +39,11 @@ cp -r ai-reading-system ~/.workbuddy/skills/
 安装后，在 WorkBuddy 对话里直接说意图：
 
 ```
-帮我拆解《置身事内》，epub 在 D:/books/置身事内.epub
+帮我拆解《思考，快与慢》，epub 在 /path/to/思考，快与慢.epub
 ```
 
 ```
-对《财务自由之路》做重点章节推荐，我的身份画像是房产内容创作者
+对《思考，快与慢》做重点章节推荐，我的身份画像是知识创作者
 ```
 
 ```
