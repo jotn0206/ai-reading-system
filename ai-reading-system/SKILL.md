@@ -1,6 +1,6 @@
 ---
 name: ai-reading-system
-version: 1.2.3
+version: 1.3.0
 display_name: 一年50本书 · AI阅读执行系统
 display_name_en: AI Reading System · 50 Books a Year
 description: >
@@ -22,7 +22,7 @@ description_en: >
   and a local visual workbench. Use when the user wants to dissect a book, take structured reading notes,
   or generate a book review.
 category: education
-author: 洋葱姐
+author: （填写作者署名）
 ---
 
 # 一年50本书 · AI 阅读执行系统
@@ -74,7 +74,7 @@ flowchart LR
 
 ## 用户体验约定
 
-- 对话驱动：用户说意图（"帮我拆《置身事内》"），agent 跑命令、生成内容、写数据，用户在工作台看结果、做勾选和批注。
+- 对话驱动：用户说意图（"帮我拆《思考，快与慢》"），agent 跑命令、生成内容、写数据，用户在工作台看结果、做勾选和批注。
 - 内容不满意时：就地改 / 带反馈重生成 / 固化风格偏好，三层机制见 wf2。
 - 版权红线：系统不分发书籍内容；金句引用限于合理范围；拆解以转述+解读为主。
 

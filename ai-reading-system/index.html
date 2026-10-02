@@ -1237,7 +1237,7 @@ function openAddBook(){
   $('#modal').innerHTML=`
     <div class="modal-head"><div><h2>＋ 新增书籍（进入环节1·新书推荐）</h2><div class="sub">推荐 → 入库 → 拆分章节</div></div><button class="x" data-action="close">✕</button></div>
     <div class="stage-body">
-      <div class="field"><label>书名 *</label><input class="f" id="nb-title" placeholder="例如：置身事内"></div>
+      <div class="field"><label>书名 *</label><input class="f" id="nb-title" placeholder="例如：思考，快与慢"></div>
       <div class="field"><label>作者</label><input class="f" id="nb-author" placeholder="作者名"></div>
       <div class="field"><label>推荐来源</label><select class="f" id="nb-source"><option>豆瓣</option><option>微信读书</option><option>朋友推荐</option><option>其他</option></select></div>
       <div class="field"><label>标签（逗号分隔）</label><input class="f" id="nb-tags" placeholder="经济学,政策,中国"></div>
@@ -1317,13 +1317,13 @@ $$('.chip').forEach(c=>c.addEventListener('click',()=>{$$('.chip').forEach(x=>x.
 // delegate chip clicks inside dynamic? chips are static in toolbar, fine.
 
 /* ---- init ---- */
-const DATA_VERSION=8; // v8=迁移语义升级：state.js 是唯一真相，版本升级时整体重播种（localStorage 只是缓存，不再合并保留）；v7=修复迁移：版本号一致但内容缺深化卡/对比分析时也强制刷新演示书；v6=冀石雨借鉴
-function demoStale(state){ // 内容完整性检查：内置书存在但缺关键字段 → 视为旧数据
-  const f=(state.books||[]).find(b=>b.title==='财务自由之路');
-  if(!f)return false;
-  const chs=(f.stages&&f.stages[3]&&f.stages[3].data&&f.stages[3].data.chapters)||[];
-  const s2=(f.stages&&f.stages[2]&&f.stages[2].data)||{};
-  return !chs.some(c=>c.deepCard)||!s2.contrast||!s2.sixDims;
+const DATA_VERSION=8; // v8=迁移语义升级：state.js 是唯一真相，版本升级时整体重播种（localStorage 只是缓存，不再合并保留）；v7=修复迁移：版本号一致但内容缺深化卡/对比分析时也强制刷新；v6=冀石雨借鉴
+function demoStale(state){ // 内容完整性检查：任一书籍缺关键字段（深化卡/对比分析/六维）→ 视为旧数据，强制重播种
+  return (state.books||[]).some(b=>{
+    const chs=(b.stages&&b.stages[3]&&b.stages[3].data&&b.stages[3].data.chapters)||[];
+    const s2=(b.stages&&b.stages[2]&&b.stages[2].data)||{};
+    return !chs.some(c=>c.deepCard)||!s2.contrast||!s2.sixDims;
+  });
 }
 /* 发布包版本戳：publish-online.js 注入 window.READING_DATA.buildStamp
    本地源码 state.js 没有该字段（remoteStamp=''）→ 本地行为完全不变；

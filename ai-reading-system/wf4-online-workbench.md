@@ -67,7 +67,7 @@ html[data-locked] #gate{display:flex}
 
 现象：线上 state.js 已经是 8 本书，用干净浏览器打开确实是 8 本；但**已经访问过的访客刷新后仍只看到 7 本**，新入库的那本怎么都不出现。
 
-根因：工作台是「localStorage 优先」的离线优先设计——`load()` 只要在 localStorage 找到数据就直接用，只在两种情况重读 `data/state.js`：① `version < DATA_VERSION`；② 演示书（"财务自由之路"）缺深化卡/六维等字段。**state.js 单方面更新，这两个条件都不满足**，于是老访客的缓存永远不会刷新。
+根因：工作台是「localStorage 优先」的离线优先设计——`load()` 只要在 localStorage 找到数据就直接用，只在两种情况重读 `data/state.js`：① `version < DATA_VERSION`；② 某本书缺深化卡/六维等字段。**state.js 单方面更新，这两个条件都不满足**，于是老访客的缓存永远不会刷新。
 
 修法（构建戳机制）：
 
