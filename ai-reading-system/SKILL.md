@@ -90,6 +90,8 @@ flowchart LR
 - `publish-online.js` — 从源码生成在线工作台发布包（--data/--out/--title，带版权红线自检 + 注入 buildStamp 内容指纹）
 - `test-gate.py` — 口令门真实浏览器 7 项回归
 - `test-stamp.py` — 发布版本戳 2 项回归（旧缓存重播种 / 戳一致不白刷）
+- `test-mobile.py` — 移动端双视口 35 项回归（含翻页式分页：无纵向滚动 / 页数 / 翻页 / 末页禁用 / 桌面零分页）
+- `gen-ledger.py` — 从 state.js 生成「1年50本进度台账」Markdown（数字全脚本统计，含待续清单 + 数据质量自检；用 `LEDGER_OUT` / `VAULT_NOTE_DIR` 指定输出与笔记目录）
 - `index.html` + `state.js` — 工作台模板（复制即用；PASS 是占位口令，部署前改一处）
 - @wf1-add-book.md — 新书入库详解
 - @wf2-eight-stages.md — 八环节生成规范与质量门

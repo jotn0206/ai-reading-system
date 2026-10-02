@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""从 data/state.js 重新生成 vault 台账「书单-1年50本进度台账.md」
+"""从 data/state.js 重新生成「1年50本进度台账.md」（进度台账；输出路径用 LEDGER_OUT 指定，笔记目录用 VAULT_NOTE_DIR 指定）
 数字全部由脚本统计，不手抄——手抄必与工作台脱钩。
-用法: python tools/gen-ledger.py
+用法: python gen-ledger.py
 """
 import json, os, io
 
@@ -155,7 +155,7 @@ def main():
     A('')
     A('## 三、产出台账')
     A('')
-    A('| # | 书名 | 原子卡 | 行动项 | 重点章节 | 爆款分 | 书评状态 | vault 笔记 |')
+    A('| # | 书名 | 原子卡 | 行动项 | 重点章节 | 爆款分 | 书评状态 | 笔记 |')
     A('| --- | --- | --- | --- | --- | --- | --- | --- |')
     for n, r in enumerate(rows, 1):
         pub = r['pub']
@@ -224,10 +224,10 @@ def main():
     else:
         L.extend(issues)
     A('')
-    A('## 七、vault 沉淀缺口')
+    A('## 七、笔记沉淀缺口')
     A('')
     if missing_note:
-        A('以下 %d 本在 `02 Wiki/12_单书笔记/` 没有目录（跑完 `sync-to-vault.js` 补）：' % len(missing_note))
+        A('以下 %d 本在笔记目录（VAULT_NOTE_DIR 指定）没有目录（跑完你的笔记同步脚本补）：' % len(missing_note))
         for r in missing_note:
             A('- %s（完成 %d/8）' % (r['b']['title'], r['done']))
     else:
@@ -240,7 +240,7 @@ def main():
     A('- **完成度** = 八环节中 status 为 `done` 的数量，满格 8/8。')
     A('- **⚠️ 未标状态** = 该环节在数据里存在但 status 字段为空/异常，通常是环节8 书评写完后忘了回标，需要人工确认。')
     A('- **爆款分** = 环节8 的 `hitScore`，空 = 未评（不许拿初评冒充过线）。')
-    A('- **vault 笔记** = `02 Wiki/12_单书笔记/` 下是否有该书目录；为 `—` 表示还没沉淀。')
+    A('- **笔记** = 笔记目录（VAULT_NOTE_DIR）下是否有该书目录；为 `—` 表示还没沉淀。')
     A('- 台账只沉淀**已入库**的书；目标 50 本的空位由工作台 ghost 卡占位。')
     A('')
 
