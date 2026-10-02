@@ -124,6 +124,57 @@ def check_no_fulltext():
     print('✅ 版权红线：模板未引用 data/fulltext')
 
 
+def check_python_syntax():
+    """硬约束：包内每个 .py 都必须能通过语法解析。
+
+    事故 G（2026-10-02）：gen-ledger.py 第 38 行有个坏字符（`\\n` 被写成 `/n`），
+    脚本直接 SyntaxError，但前三道闸（frontmatter / 目录 / 口令）全过，
+    坏文件照样打进三包分发到 GitHub 和用户本机——语法错是「用户装完才发现」的最差体验。
+    所以构建期必须逐个 ast.parse，坏一个就构建失败。
+    """
+    import ast
+    bad = []
+    py_files = sorted(SRC.glob('*.py'))
+    for f in py_files:
+        try:
+            ast.parse(f.read_text(encoding='utf-8'))
+        except SyntaxError as e:
+            bad.append(f'{f.name} 第 {e.lineno} 行: {(e.text or "").strip()[:80]}')
+    if bad:
+        raise SystemExit('❌ 包内 Python 脚本有语法错误（装完才报错，用户体验最差）：\n   '
+                         + '\n   '.join(bad)
+                         + '\n   修好再打包。')
+    print(f'✅ Python 语法自检通过：{len(py_files)} 个脚本全部可解析')
+
+
+def check_no_personal_leak():
+    """硬约束：对外分发去个人化。包内任何文件都不得出现真实口令 / 个人线上链接 /
+    本机 vault 名 / 常见个人目录名（事故 H：v1.3.0 的 gen-ledger.py 里硬编码了
+    作者本人的线上工作台链接，随包分发等于把个人地址送给所有用户）。"""
+    FORBIDDEN = [
+        (r'https?://[^\s)\'"]*workbuddy\.host', '个人线上工作台链接'),
+        (r'https?://[^\s)\'"]*workbuddy\.cn(?!/open)', '个人 WorkBuddy 域名'),
+        (r'\b[A-Z]{4}-[A-Z0-9]{4}\b', '疑似真实访问口令（形如 XXXX-XXXX）'),
+        (r'[Dd]:/dwjotn|02 Wiki', '个人 vault 路径'),
+        (r'C:/Users/Administrator|C:\\\\Users\\\\Administrator', '本机用户名路径'),
+    ]
+    leaks = []
+    for f in sorted(SRC.rglob('*')):
+        if not f.is_file() or f.suffix.lower() in ('.png', '.jpg', '.zip'):
+            continue
+        text = f.read_text(encoding='utf-8', errors='ignore')
+        for line_no, line in enumerate(text.split('\n'), 1):
+            for pat, why in FORBIDDEN:
+                if re.search(pat, line):
+                    leaks.append(f'{f.name}:{line_no}（{why}）{line.strip()[:70]}')
+                    break
+    if leaks:
+        raise SystemExit('❌ 包内出现个人化内容（对外分发会泄露隐私 / 让用户看到别人的东西）：\n   '
+                         + '\n   '.join(leaks[:8])
+                         + '\n   改成占位符或走环境变量再打包。')
+    print(f'✅ 去个人化自检通过：无真实口令 / 个人链接 / 本机路径')
+
+
 def clean_dist():
     """清掉 dist/ 里的中间产物，只留三个正式包。"""
     keep = (f'{SKILL_NAME}.skill', f'{SKILL_NAME}-marketplace.zip', f'{SKILL_NAME}-root.zip')
@@ -162,6 +213,8 @@ def main():
     check_flat_structure()
     check_pass_placeholder()
     check_no_fulltext()
+    check_python_syntax()
+    check_no_personal_leak()
     clean_dist()
     local_md = build_local_variant()
 

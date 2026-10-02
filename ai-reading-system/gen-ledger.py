@@ -1,14 +1,26 @@
 # -*- coding: utf-8 -*-
-"""从 data/state.js 重新生成「1年50本进度台账.md」（进度台账；输出路径用 LEDGER_OUT 指定，笔记目录用 VAULT_NOTE_DIR 指定）
+"""从 data/state.js 重新生成「1年50本进度台账.md」
 数字全部由脚本统计，不手抄——手抄必与工作台脱钩。
-用法: python gen-ledger.py
+
+环境变量（都可省略，省略时按下面的默认值）：
+  READING_ROOT     工作台根目录（里面应该有 data/state.js）。默认取当前工作目录。
+  LEDGER_OUT       台账输出 .md 路径。默认写到 READING_ROOT 下。
+  VAULT_NOTE_DIR   笔记沉淀目录，用于统计每本书的「已沉淀」标记。留空则该列全为 —。
+  LEDGER_WORKBENCH  台账头部「在线工作台」链接。留空则不写这一行（对外分发的包不该带别人的链接）。
+  TARGET           年度目标本数，默认 50。
+
+用法: cd<工作台根目录> && python gen-ledger.py
 """
 import json, os, io
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VAULT = os.environ.get('LEDGER_OUT') or (os.path.join(ROOT, '书单-1年50本进度台账.md'))
-NOTE_DIR = os.environ.get('VAULT_NOTE_DIR','')
-TARGET = 50
+# 注意：本脚本在技能包里是平铺的（ai-reading-system/gen-ledger.py），
+# 所以不能用 dirname(dirname(__file__)) 去找工作台——那会指向技能目录的父级。
+# 工作台位置一律由 READING_ROOT / 当前工作目录决定。
+ROOT = os.path.abspath(os.environ.get('READING_ROOT') or os.getcwd())
+VAULT = os.environ.get('LEDGER_OUT') or os.path.join(ROOT, '书单-1年50本进度台账.md')
+NOTE_DIR = os.environ.get('VAULT_NOTE_DIR', '')
+WORKBENCH = os.environ.get('LEDGER_WORKBENCH', '').strip()
+TARGET = int(os.environ.get('TARGET', '50') or 50)
 
 STAGE_NAMES = {1: '新书推荐', 2: '粗读', 3: '逐章拆解', 4: '逻辑链', 5: '重点推荐',
                6: '原子笔记', 7: '行动清单', 8: '书评'}
@@ -35,7 +47,8 @@ def mark(st, exists=True):
 
 
 def has_note(title):
-    if not NOTE_DIR:/n        return '—'
+    if not NOTE_DIR:
+        return '—'
     return '✅' if os.path.isdir(os.path.join(NOTE_DIR, title)) else '—'
 
 
@@ -98,9 +111,10 @@ def main():
     A('---')
     A('# 📋 1年50本 阅读进度台账')
     A('')
-    A('> **本文件由 `reading-system/tools/gen-ledger.py` 从工作台 `data/state.js` 自动生成，别手改。**')
+    A('> **本文件由 `gen-ledger.py` 从工作台 `data/state.js` 自动生成，别手改。**')
     A('> 手改会在下次同步时被覆盖；要改数据请改工作台，再重跑脚本。')
-    A('> 在线工作台：https://ai-reading-system.app.workbuddy.host/ （数据口径以此为准）')
+    if WORKBENCH:
+        A('> 在线工作台：%s （数据口径以此为准）' % WORKBENCH)
     A('')
     A('## 一、总览')
     A('')

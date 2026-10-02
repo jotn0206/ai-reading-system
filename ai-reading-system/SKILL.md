@@ -1,6 +1,6 @@
 ---
 name: ai-reading-system
-version: 1.3.0
+version: 1.4.0
 display_name: 一年50本书 · AI阅读执行系统
 display_name_en: AI Reading System · 50 Books a Year
 description: >
@@ -91,7 +91,7 @@ flowchart LR
 - `test-gate.py` — 口令门真实浏览器 7 项回归
 - `test-stamp.py` — 发布版本戳 2 项回归（旧缓存重播种 / 戳一致不白刷）
 - `test-mobile.py` — 移动端双视口 35 项回归（含翻页式分页：无纵向滚动 / 页数 / 翻页 / 末页禁用 / 桌面零分页）
-- `gen-ledger.py` — 从 state.js 生成「1年50本进度台账」Markdown（数字全脚本统计，含待续清单 + 数据质量自检；用 `LEDGER_OUT` / `VAULT_NOTE_DIR` 指定输出与笔记目录）
+- `gen-ledger.py` — 从 `data/state.js` 生成「1年50本进度台账」Markdown（数字全脚本统计，含待续清单 + 数据质量自检）。在**工作台根目录**下运行，路径全走环境变量：`READING_ROOT`（工作台根，默认当前目录）/ `LEDGER_OUT`（台账输出，默认写在工作台根）/ `VAULT_NOTE_DIR`（笔记沉淀目录，用于「已沉淀」标记，留空则该列全为 —）/ `LEDGER_WORKBENCH`（台账头部的在线工作台链接，留空则不写）/ `TARGET`（年度目标，默认 50）
 - `index.html` + `state.js` — 工作台模板（复制即用；PASS 是占位口令，部署前改一处）
 - @wf1-add-book.md — 新书入库详解
 - @wf2-eight-stages.md — 八环节生成规范与质量门

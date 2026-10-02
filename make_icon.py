@@ -1,17 +1,37 @@
 # -*- coding: utf-8 -*-
-"""把 ImageGen 产出的 1024 方图处理成 512x512 技能图标：
+"""把图生模型产出的 1024 方图处理成 512x512 技能图标：
 1) 内缩裁掉生成图外圈的白色圆角留白 -> 让图标满幅
 2) 抹掉右下角水印（用正上方同宽的干净背景块覆盖）
 3) 重采样到 512x512，输出到技能根目录 icon.png
+
+用法（路径全部相对仓库根，不写死本机盘符）:
+    python make_icon.py <原始大图>
+    python make_icon.py <原始大图> --inset 38
+默认输出: ai-reading-system/icon.png 与 dist/icon-512.png
 """
+import argparse
 from pathlib import Path
 from PIL import Image
 
-SRC = Path(r'D:/jotnbook/reading-system-skill/dist/Flat_vector_app_icon__1_1_squa_2026-09-27T01-04-27.png')
-DST_SKILL = Path(r'D:/jotnbook/reading-system-skill/ai-reading-system/icon.png')
-DST_PREVIEW = Path(r'D:/jotnbook/reading-system-skill/dist/icon-512.png')
+ROOT = Path(__file__).resolve().parent
+DST_SKILL = ROOT / 'ai-reading-system' / 'icon.png'
+DST_PREVIEW = ROOT / 'dist' / 'icon-512.png'
 
-INSET = 38                      # 内缩像素，去掉外圈留白
+ap = argparse.ArgumentParser()
+ap.add_argument('src', help='图生模型产出的原始方图路径')
+ap.add_argument('--inset', type=int, default=38,
+                help='内缩像素，去掉外圈留白（默认 38）')
+args = ap.parse_args()
+
+SRC = Path(args.src)
+if not SRC.is_absolute():
+    SRC = (ROOT / SRC).resolve()
+if not SRC.exists():
+    raise SystemExit(f'❌ 找不到原始图：{SRC}')
+DST_SKILL.parent.mkdir(parents=True, exist_ok=True)
+DST_PREVIEW.parent.mkdir(parents=True, exist_ok=True)
+
+INSET = args.inset                 # 内缩像素，去掉外圈留白
 img = Image.open(SRC).convert('RGB')
 w, h = img.size
 img = img.crop((INSET, INSET, w - INSET, h - INSET))
