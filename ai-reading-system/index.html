@@ -317,6 +317,34 @@
   /* home/agg 场景：宿主高度由 JS 定（100dvh - 头部 - tabbar） */
   #aggview.paging,#homeview.paging{margin:0}
 }
+/* === v1.6 留存看板 === */
+.ret-card{background:var(--bg,#fff);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.ret-h{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ret-sub{font-size:12px;color:var(--sub);font-weight:400}
+.ret-badge{font-size:12px;padding:2px 9px;border-radius:999px;background:#EEF2FF;color:var(--blue);font-weight:700}
+.ret-badge.on{background:#FEE2E2;color:#C0392B}
+.ret-foot{font-size:12px;color:var(--sub);margin-top:10px}
+.fn-row{display:flex;align-items:center;gap:10px;margin:7px 0}
+.fn-name{width:108px;flex:none;font-size:13px;color:var(--ink)}
+.fn-name.red{color:#C0392B;font-weight:700}
+.fn-bar{flex:1;height:9px;background:#EEF1F5;border-radius:6px;overflow:hidden}
+.fn-bar>i{display:block;height:100%;background:var(--blue);border-radius:6px}
+.fn-row.red .fn-bar>i{background:#E2763A}
+.fn-cnt{width:52px;flex:none;text-align:right;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+.rq-list{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.rq-item{display:flex;align-items:flex-start;gap:10px;background:#F8FAFC;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.rq-main{flex:1;min-width:0}
+.rq-tt{font-weight:700;font-size:13.5px;color:var(--ink)}
+.rq-ol{font-size:12.5px;color:var(--sub);margin:2px 0}
+.rq-src{font-size:11.5px;color:var(--sub);opacity:.85}
+.rq-btn{flex:none;align-self:center;border:1px solid var(--blue);background:var(--blue);color:#fff;border-radius:9px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.rq-btn:active{opacity:.8}
+.ret-all{border:1px solid var(--line);background:#fff;color:var(--blue);border-radius:9px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:6px}
+.rq-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.rq-due{font-size:11.5px;padding:1px 8px;border-radius:999px;background:#EEF2FF;color:var(--blue);font-weight:700}
+.rq-due.on{background:#FEE2E2;color:#C0392B}
+.rq-pri{font-size:11.5px;padding:1px 8px;border-radius:999px;background:#FEF3C7;color:#B45309;font-weight:700}
+.rq-eff{font-size:11.5px;padding:1px 8px;border-radius:999px;background:#E8F6EF;color:#0F6E56;font-weight:700}
 </style>
 <style>
 /* =====================================================
@@ -534,6 +562,16 @@ textarea.f{line-height:1.7}
 <div class="section-wrap">
   <div class="sec-title"><span class="bar"></span>执行环节分布（当前所处阶段）</div>
   <div class="dist" id="dist"></div>
+</div>
+
+<div class="section-wrap" id="retain-sec">
+  <div class="sec-title"><span class="bar"></span>📊 留存看板 <span class="ret-sub">v1.6 · 复习循环 + 漏斗埋点</span></div>
+  <div id="retain"></div>
+</div>
+
+<div class="section-wrap" id="actinbox-sec">
+  <div class="sec-title"><span class="bar"></span>✅ 行动收件箱 <span class="ret-sub">v1.7 · 今日精选 + 一键执行</span></div>
+  <div id="actinbox"></div>
 </div>
 
 <div class="toolbar">
@@ -777,8 +815,152 @@ function shade(hex,p){ // lighten/darken hex
   r=Math.max(0,Math.min(255,r+p));g=Math.max(0,Math.min(255,g+p));b=Math.max(0,Math.min(255,b+p));
   return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
 }
+/* =========================================================
+   v1.6 留存版：复习循环 + 漏斗埋点
+   ========================================================= */
+const REVIEW_INTERVALS=[1,2,4,7,15,30]; // Leitner 间隔（天）
+function addDaysISO(iso,n){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function allCardsCount(){let n=0;state.books.forEach(b=>n+=(getPath(b,'stages.6.data.cards')||[]).length);return n;}
+function dueCards(withinDays){
+  const cut=addDaysISO(today(),withinDays||0);
+  const out=[];
+  state.books.forEach(b=>{
+    (getPath(b,'stages.6.data.cards')||[]).forEach(c=>{
+      const rv=c.review||{};
+      if(rv.next&&rv.next<=cut)out.push({book:b,card:c});
+    });
+  });
+  return out;
+}
+function advanceReview(rv){
+  const t=today();
+  rv.last=t;
+  rv.box=Math.min((rv.box||0)+1,REVIEW_INTERVALS.length-1);
+  rv.next=addDaysISO(t,REVIEW_INTERVALS[rv.box]);
+  rv.history=rv.history||[];
+  rv.history.push({date:t,box:rv.box});
+}
+/* ---- v1.7 行动执行：收件箱 + 排期 due + 执行时间戳 doneAt ---- */
+let actShowAll=false;
+function isDone(a){return !!(a&&a.doneAt);}
+function setActionDone(a,v){a.done=!!v;a.doneAt=v?today():null;}
+function daysBetween(a,b){return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+function actStats(){let tot=0,dn=0;state.books.forEach(b=>(getPath(b,'stages.7.data.actions')||[]).forEach(a=>{tot++;if(isDone(a))dn++;}));return{tot,dn};}
+function weeklyDone(){const cut=addDaysISO(today(),-7);let n=0;state.books.forEach(b=>(getPath(b,'stages.7.data.actions')||[]).forEach(a=>{if(a.doneAt&&a.doneAt>=cut)n++;}));return n;}
+function dueActions(){
+  const out=[];
+  state.books.forEach(b=>(getPath(b,'stages.7.data.actions')||[]).forEach((a,i)=>{if(isDone(a))return;out.push({book:b,action:a,idx:i});}));
+  out.sort((x,y)=>{const dx=x.action.due||'9999-12-31',dy=y.action.due||'9999-12-31';return dx<dy?-1:dx>dy?1:0;});
+  return out;
+}
+function renderActions(){
+  const el=$('#actinbox');if(!el)return;
+  const all=dueActions();const t=today();
+  const overdue=all.filter(x=>x.action.due&&x.action.due<t).length;
+  const due7=all.filter(x=>x.action.due&&x.action.due<=addDaysISO(t,7)).length;
+  const top=actShowAll?all:all.slice(0,3);
+  let rows;
+  if(top.length){
+    rows=top.map(x=>{
+      const b=x.book,a=x.action;
+      const od=a.due&&a.due<t;
+      const dueTxt=a.due?(od?('逾期 '+daysBetween(a.due,t)+'天'):('剩 '+daysBetween(t,a.due)+'天')):'未排期';
+      const dueCls=od?'rq-due on':(a.due?'rq-due':'');
+      return `<div class="rq-item">
+        <div class="rq-main">
+          <div class="rq-tt">${esc(a.content||'(空行动)')}</div>
+          <div class="rq-ol">${b.coverEmoji||'📖'} 《${esc(b.title)}》${a.layer?' · '+esc(a.layer):''}</div>
+          <div class="rq-tags"><span class="${dueCls}">${dueTxt}</span>${a.priority?`<span class="rq-pri">${esc(a.priority)}</span>`:''}${a.effort?`<span class="rq-eff">${esc(a.effort)}</span>`:''}</div>
+        </div>
+        <button class="rq-btn" data-action="action-done" data-book="${b.id}" data-i="${x.idx}">✓ 执行</button>
+      </div>`;
+    }).join('');
+  } else rows='<div class="empty" style="padding:10px">🎉 行动都清空了，去「环节7」加新启发吧。</div>';
+  const st=actStats();const pct=st.tot?Math.round(st.dn/st.tot*100):0;
+  const footLink=actShowAll?'<a data-action="act-all" style="color:var(--blue);cursor:pointer">收起</a>':'<a data-action="act-all" style="color:var(--blue);cursor:pointer">查看全部 '+all.length+' 条</a>';
+  el.innerHTML=`
+    <div class="ret-card">
+      <div class="ret-h">📥 今日行动精选 <span class="ret-badge ${overdue?'on':''}">待执行 ${all.length} · 逾期 ${overdue}</span></div>
+      <div class="rq-list">${rows}</div>
+      <div class="ret-foot">本周到期 ${due7} 条 · ${footLink}</div>
+    </div>
+    <div class="ret-card">
+      <div class="ret-h">📈 行动执行动能</div>
+      <div class="fn-row"><span class="fn-name">累计执行率</span><span class="fn-bar"><i style="width:${pct}%"></i></span><span class="fn-cnt">${st.dn}/${st.tot}</span></div>
+      <div class="ret-foot">本周新执行 ${weeklyDone()} 条 · 待执行 ${all.length} 条</div>
+    </div>`;
+}
+function renderRetain(){
+  const el=$('#retain');if(!el)return;
+  const total=state.books.length;
+  // 1) 环节完成漏斗（红区 = 原子笔记 / 行动清单 / 书评，即 stage 6/7/8）
+  const funnel=STAGES.map(s=>{
+    let done=0;state.books.forEach(b=>{const st=b.stages[s.id];if(st&&st.status==='done')done++;});
+    const pct=total?Math.round(done/total*100):0;
+    const red=(+s.id>=6)?' red':'';
+    return `<div class="fn-row${red}"><span class="fn-name${red}">${s.icon} ${s.name}</span><span class="fn-bar"><i style="width:${pct}%"></i></span><span class="fn-cnt">${done}/${total}</span></div>`;
+  }).join('');
+  const fullDone=state.books.filter(b=>doneCount(b)===8).length;
+  // 2) 复习队列（本周待回顾）
+  const due=dueCards(7);
+  let queue;
+  if(due.length){
+    queue=due.slice(0,40).map(d=>{
+      const b=d.book,c=d.card;
+      return `<div class="rq-item">
+        <div class="rq-main">
+          <div class="rq-tt">${esc(c.concept||'(未命名卡)')}</div>
+          ${c.oneLiner?`<div class="rq-ol">${esc(c.oneLiner)}</div>`:''}
+          <div class="rq-src">${b.coverEmoji||'📖'} 《${esc(b.title)}》${c.source?' · '+esc(c.source):''}</div>
+        </div>
+        <button class="rq-btn" data-action="review-done" data-book="${b.id}" data-cardid="${esc(c.id)}">✓ 已复习</button>
+      </div>`;
+    }).join('');
+  } else queue='<div class="empty" style="padding:10px">🎉 本周没有待回顾的卡，保持节奏！</div>';
+  // 3) 行动执行率
+  let actTotal=0,actDone=0;
+  state.books.forEach(b=>(getPath(b,'stages.7.data.actions')||[]).forEach(a=>{actTotal++;if(isDone(a))actDone++;}));
+  const actPct=actTotal?Math.round(actDone/actTotal*100):0;
+  el.innerHTML=`
+    <div class="ret-card">
+      <div class="ret-h">📉 环节完成漏斗 <span class="ret-sub">（红区 = ${STAGES[5].name} / ${STAGES[6].name} / ${STAGES[7].name}）</span></div>
+      ${funnel}
+      <div class="ret-foot">八环节全完成：${fullDone} / ${total} 本</div>
+    </div>
+    <div class="ret-card">
+      <div class="ret-h">🔁 复习队列 <span class="ret-badge ${due.length?'on':''}">本周待回顾 ${due.length} 张</span> <span class="ret-sub">/ 共 ${allCardsCount()} 张</span></div>
+      ${due.length?`<button class="ret-all" data-action="review-all-week">一键标记本周已复习</button>`:''}
+      <div class="rq-list">${queue}</div>
+    </div>
+    <div class="ret-card">
+      <div class="ret-h">✅ 行动执行率</div>
+      <div class="fn-row"><span class="fn-name">已执行行动</span><span class="fn-bar"><i style="width:${actPct}%"></i></span><span class="fn-cnt">${actDone}/${actTotal}</span></div>
+      <div class="ret-foot">行动在「环节7」创建 → 首页收件箱一键执行；排期 due 驱动提醒</div>
+    </div>`;
+}
+function migrateRetain(){
+  let gi=0;
+  state.books.forEach(b=>{
+    STAGES.forEach(s=>{
+      const st=b.stages[s.id];
+      if(st&&typeof st==='object'&&!('doneAt' in st))st.doneAt=null;
+    });
+    (getPath(b,'stages.6.data.cards')||[]).forEach(c=>{
+      if(!c.review)c.review={next:addDaysISO(today(),(gi%30)+1),last:null,box:0,history:[]};
+      gi++;
+    });
+    (getPath(b,'stages.7.data.actions')||[]).forEach(a=>{
+      if(!('done' in a))a.done=false;
+      if(!('due' in a))a.due=a.done?null:addDaysISO(today(),14);
+      if(!('doneAt' in a))a.doneAt=a.done?today():null;
+      if(!('effort' in a))a.effort=null;
+    });
+  });
+  save();
+}
+
 function renderAll(){
-  renderKPIs();renderDist();renderGrid();
+  renderKPIs();renderDist();renderGrid();renderRetain();renderActions();
   if(currentTab==='home')Pager.mount($('#homeview'),'tab');
 }
 
@@ -1096,6 +1278,10 @@ function stage7(b,d){
     <div class="two">
       <div class="field"><span class="mini">优先级</span><select class="f" data-field="stages.7.data.actions.${i}.priority">${['P0','P1','P2'].map(o=>`<option ${a.priority===o?'selected':''}>${o}</option>`).join('')}</select></div>
       <div class="field"><span class="mini">层级（冀石雨行动建议分组）</span><select class="f" data-field="stages.7.data.actions.${i}.layer">${['认知层','决策层','行动层','信息素养层'].map(o=>`<option ${a.layer===o?'selected':''}>${o}</option>`).join('')}</select></div>
+    </div>
+    <div class="two">
+      <div class="field"><span class="mini">排期（due）</span><input class="f" type="date" data-field="stages.7.data.actions.${i}.due" value="${esc(a.due||'')}"></div>
+      <div class="field"><span class="mini">精力（effort）</span><select class="f" data-field="stages.7.data.actions.${i}.effort">${['','2min','15min','habit'].map(o=>`<option value="${o}" ${a.effort===o?'selected':''}>${o||'未设'}</option>`).join('')}</select></div>
     </div>
     <div class="field"><span class="mini">检验标准（怎样算做到）</span><input class="f" data-field="stages.7.data.actions.${i}.verify" value="${esc(a.verify)}" placeholder="可验证的完成标志"></div>
   </div>`).join('')}
@@ -1665,7 +1851,21 @@ document.addEventListener('click',e=>{
   const a=t.dataset.action;
   if(a==='tab'){switchTab(t.dataset.tab);return;}
   if(a==='agg-open'){openBook(t.dataset.book);currentStage=+t.dataset.sid;renderModal();return;}
-  if(a==='agg-toggle'){const b=state.books.find(x=>x.id===t.dataset.book);const arr=getPath(b,'stages.7.data.actions');if(arr&&arr[+t.dataset.i]){arr[+t.dataset.i].done=!arr[+t.dataset.i].done;save();renderAgg('actions');renderAll();}return;}
+  if(a==='agg-toggle'){const b=state.books.find(x=>x.id===t.dataset.book);const arr=getPath(b,'stages.7.data.actions');if(arr&&arr[+t.dataset.i]){setActionDone(arr[+t.dataset.i],!arr[+t.dataset.i].done);save();renderAgg('actions');renderAll();}return;}
+  if(a==='review-done'){
+    const b=state.books.find(x=>x.id===t.dataset.book);
+    const card=(getPath(b,'stages.6.data.cards')||[]).find(c=>c.id===t.dataset.cardid);
+    if(card&&card.review){advanceReview(card.review);save();renderRetain();toast('已更新复习计划');}
+    return;
+  }
+  if(a==='review-all-week'){
+    const due=dueCards(7);
+    due.forEach(d=>advanceReview(d.card.review));
+    save();renderRetain();toast('本周 '+due.length+' 张已标记');
+    return;
+  }
+  if(a==='action-done'){const b=state.books.find(x=>x.id===t.dataset.book);const arr=getPath(b,'stages.7.data.actions');if(arr&&arr[+t.dataset.i]){setActionDone(arr[+t.dataset.i],true);save();renderActions();renderRetain();toast('已记执行 ✓');}return;}
+  if(a==='act-all'){actShowAll=!actShowAll;renderActions();return;}
   if(a==='note-filter'){noteFilter=t.dataset.v;renderAgg('notes');return;}
   if(a==='close'){$('#overlay').classList.remove('show');renderAll();return;}
   if(a==='add-book'){openAddBook();return;}
@@ -1675,7 +1875,7 @@ document.addEventListener('click',e=>{
   if(a==='reset'){if(confirm('重置为示例数据？当前数据将被覆盖。')){state=demoData();save();renderAll();toast('已重置为示例数据')}return;}
   if(a==='open-book'){openBook(t.dataset.id);return;}
   if(a==='goto-stage'){currentStage=+t.dataset.sid;renderModal();return;}
-  if(a==='set-status'){const b=getBook();b.stages[currentStage].status=t.dataset.v;save();renderStage();renderAll();return;}
+  if(a==='set-status'){const b=getBook();b.stages[currentStage].status=t.dataset.v;if(t.dataset.v==='done')b.stages[currentStage].doneAt=today();else b.stages[currentStage].doneAt=null;save();renderStage();renderAll();return;}
   if(a==='arr-add'){const key=t.dataset.key;const arr=getPath(getBook(),key);if(!arr)return;arr.push({});save();renderStage();return;}
   if(a==='arr-del'){const key=t.dataset.key;const arr=getPath(getBook(),key);arr.splice(+t.dataset.i,1);save();renderStage();return;}
   if(a==='chain-pop'){const arr=getPath(getBook(),'stages.4.data.chain');arr.pop();save();renderStage();return;}
@@ -1684,11 +1884,11 @@ document.addEventListener('click',e=>{
   if(a==='graph-del-node'){const g=getBook().stages[2].data.graph;g.nodes.splice(+t.dataset.i,1);g.edges=g.edges.filter(x=>x.from!==+t.dataset.i&&x.to!==+t.dataset.i).map(x=>({from:x.from>+t.dataset.i?x.from-1:x.from,to:x.to>+t.dataset.i?x.to-1:x.to,relation:x.relation}));save();renderStage();return;}
   if(a==='graph-add-edge'){const g=getBook().stages[2].data.graph;g.edges=g.edges||[];if((g.nodes||[]).length<2){toast('至少需要2个节点');return}g.edges.push({from:0,to:1,relation:'关联'});save();renderStage();return;}
   if(a==='graph-del-edge'){const g=getBook().stages[2].data.graph;g.edges.splice(+t.dataset.i,1);save();renderStage();return;}
-  if(a==='card-add'){const cards=getBook().stages[6].data.cards;cards.push({id:today()+'-'+String(cards.length+1).padStart(3,'0'),type:'概念卡',concept:'',oneLiner:'',points:'',content:'',source:'',links:'',tags:'',myThought:''});save();renderStage();return;}
+  if(a==='card-add'){const cards=getBook().stages[6].data.cards;const c={id:today()+'-'+String(cards.length+1).padStart(3,'0'),type:'概念卡',concept:'',oneLiner:'',points:'',content:'',source:'',links:'',tags:'',myThought:''};c.review={next:today(),last:null,box:0,history:[]};cards.push(c);save();renderStage();return;}
   if(a==='card-del'){getBook().stages[6].data.cards.splice(+t.dataset.i,1);save();renderStage();return;}
-  if(a==='action-add'){getBook().stages[7].data.actions.push({content:'',priority:'P1',done:false});save();renderStage();return;}
+  if(a==='action-add'){getBook().stages[7].data.actions.push({content:'',priority:'P1',done:false,doneAt:null,due:addDaysISO(today(),14),effort:null});save();renderStage();return;}
   if(a==='action-del'){getBook().stages[7].data.actions.splice(+t.dataset.i,1);save();renderStage();return;}
-  if(a==='action-toggle'){const i=+t.dataset.i;getBook().stages[7].data.actions[i].done=t.checked;save();return;}
+  if(a==='action-toggle'){const i=+t.dataset.i;setActionDone(getBook().stages[7].data.actions[i],t.checked);save();renderActions();renderRetain();return;}
   if(a==='key-toggle'){const title=t.dataset.title;const rec=getBook().stages[5].data;rec.recommended=rec.recommended||[];let r=rec.recommended.find(x=>x.title===title);if(t.checked){if(!r){r={title,isKey:true,rationale:''};rec.recommended.push(r)}else r.isKey=true;}else{if(r)r.isKey=false;}save();return;}
   if(a==='key-note'){/* handled on input */}
   if(a==='pub-check'){const k=t.dataset.k;const d8=getBook().stages[8].data;if(k==='hitScore'){d8.hitScore=t.checked?'85':'';}else{d8[k]=t.checked;}save();return;}
@@ -1721,7 +1921,7 @@ document.addEventListener('click',e=>{
   /* ---- P2 移动端弹窗吸底操作栏 ---- */
   if(a==='foot-prev'){if(currentStage>1){currentStage--;renderModal();}return;}
   if(a==='foot-next'){if(currentStage<8){currentStage++;renderModal();}return;}
-  if(a==='foot-done'){const b=getBook();b.stages[currentStage].status='done';save();renderStage();renderAll();toast('已标为完成');return;}
+  if(a==='foot-done'){const b=getBook();b.stages[currentStage].status='done';b.stages[currentStage].doneAt=today();save();renderStage();renderAll();toast('已标为完成');return;}
 });
 
 document.addEventListener('input',e=>{
@@ -1849,6 +2049,7 @@ else if((state.version||0)<DATA_VERSION||demoStale(state)||stampOutdated){
   state=demoData();state.version=DATA_VERSION;save();
   if(stampOutdated)setTimeout(()=>toast('已同步为最新数据'),400);
 }
+migrateRetain();
 renderAll();
 </script>
 </body>
