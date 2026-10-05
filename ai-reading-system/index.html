@@ -319,6 +319,118 @@
 }
 </style>
 <style>
+/* =====================================================
+   P2 阅读体验改造（2026-10-05）
+   朗读条 / 阅读视图 / 阅读进度 / 环节8流程卡 / 吸底操作栏
+   ===================================================== */
+
+/* ---------- 阅读进度条（弹窗顶部，随滚动/翻页前进） ---------- */
+#read-prog{position:sticky;top:0;z-index:6;height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin:0 -26px}
+#read-prog>i{display:block;height:100%;width:0%;background:var(--grad);transition:width .25s}
+@media(max-width:768px){#read-prog{margin:0 -14px}}
+
+/* ---------- 朗读悬浮条 ---------- */
+#tts-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:92;
+  display:none;align-items:center;gap:8px;background:#1F2937;color:#fff;border-radius:30px;
+  padding:8px 14px;box-shadow:0 10px 30px rgba(0,0,0,.35);max-width:min(92vw,560px)}
+#tts-bar.show{display:flex}
+#tts-bar button{background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:20px;
+  min-width:38px;min-height:38px;font-size:15px;cursor:pointer;font-family:inherit;padding:0 10px;font-weight:700}
+#tts-bar button:active{background:rgba(255,255,255,.3)}
+#tts-bar .tts-info{font-size:12px;opacity:.85;min-width:72px;text-align:center;line-height:1.3}
+#tts-bar .tts-rate{min-width:52px}
+@media(max-width:768px){
+  #tts-bar{bottom:calc(64px + env(safe-area-inset-bottom));padding:6px 10px;gap:5px}
+  #tts-bar button{min-width:42px;min-height:42px}
+  #tts-bar .tts-info{font-size:11px;min-width:58px}
+}
+/* 阅读视图打开时，朗读条抬到阅读视图吸底栏之上，避免重叠 */
+#reader.show ~ #tts-bar{bottom:calc(78px + env(safe-area-inset-bottom))}
+/* 朗读高亮：当前段落 */
+.tts-cur{background:linear-gradient(90deg,rgba(245,158,11,.22),rgba(59,130,246,.14)) !important;
+  border-radius:8px;box-shadow:-3px 0 0 var(--orange);transition:background .2s}
+
+/* ---------- 阅读视图（沉浸阅读覆盖层） ---------- */
+#reader{position:fixed;inset:0;z-index:85;background:var(--bg);display:none;flex-direction:column}
+#reader.show{display:flex}
+.rd-head{flex:none;background:var(--grad);color:#fff;padding:14px 20px 10px;position:relative}
+.rd-head .rh-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.rd-head h3{font-size:16px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rd-head .rh-sub{font-size:12px;opacity:.9;margin-top:2px}
+.rd-head .rh-acts{display:flex;gap:8px;flex:none}
+.rd-head .rh-acts button{background:rgba(255,255,255,.18);border:none;color:#fff;border-radius:10px;
+  min-width:36px;min-height:36px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:700;padding:0 10px}
+.rd-progline{height:3px;background:rgba(255,255,255,.28);border-radius:2px;margin-top:10px;overflow:hidden}
+.rd-progline>i{display:block;height:100%;width:0%;background:#fff;transition:width .2s}
+.rd-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:22px 26px 180px;
+  font-size:var(--rd-fs,17px);line-height:1.85}
+.rd-body .rd-inner{max-width:720px;margin:0 auto}
+.rd-sec{margin-bottom:26px}
+.rd-sec .rs-t{font-size:15px;font-weight:800;color:var(--blue);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.rd-sec .rs-t::before{content:"";width:5px;height:16px;background:var(--grad);border-radius:3px}
+.rd-p{margin:0 0 14px;color:var(--ink);text-align:justify}
+.rd-p.tts-seg{padding:2px 6px;margin-left:-6px;cursor:pointer}
+.rd-q{border-left:4px solid var(--orange);background:#FFF7E6;padding:10px 14px;border-radius:0 10px 10px 0;
+  margin:0 0 14px;font-size:.94em}
+/* 阅读视图吸底操作栏 */
+.rd-foot{position:absolute;left:0;right:0;bottom:0;z-index:5;display:flex;gap:8px;justify-content:center;
+  background:rgba(255,255,255,.94);backdrop-filter:blur(6px);border-top:1px solid var(--line);
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+.rd-foot button{border:1px solid var(--line);background:#fff;border-radius:22px;min-height:42px;
+  padding:0 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink)}
+.rd-foot button.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+@media(max-width:768px){
+  .rd-body{padding:18px 16px 180px;font-size:var(--rd-fs,17px)}
+  .rd-head h3{font-size:15px}
+}
+
+/* ---------- 环节8：书评执行流程步骤卡 ---------- */
+.flow8{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:12px 0}
+.f8-step{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px 11px;position:relative;
+  box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:6px;min-height:118px}
+.f8-step .f8-no{width:24px;height:24px;border-radius:50%;background:var(--todo);color:#fff;font-size:12px;
+  font-weight:800;display:flex;align-items:center;justify-content:center}
+.f8-step .f8-t{font-size:13px;font-weight:800;line-height:1.35}
+.f8-step .f8-s{font-size:11px;color:var(--sub);line-height:1.4;flex:1}
+.f8-step .f8-st{font-size:11px;font-weight:800;align-self:flex-start;padding:2px 8px;border-radius:12px;
+  background:#F3F4F8;color:var(--todo-t)}
+.f8-step.done{border-color:#A7F3D0;background:#F6FEFB}
+.f8-step.done .f8-no{background:var(--done)}
+.f8-step.done .f8-st{background:#D1FAE5;color:#059669}
+.f8-step.doing{border-color:#BFDBFE;background:#F8FBFF;box-shadow:0 0 0 3px rgba(59,130,246,.10)}
+.f8-step.doing .f8-no{background:var(--doing)}
+.f8-step.doing .f8-st{background:#DBEAFE;color:#2563EB}
+.f8-step[data-click]{cursor:pointer}
+.f8-step[data-click]:hover{border-color:var(--blue)}
+@media(max-width:980px){.flow8{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.flow8{grid-template-columns:repeat(2,1fr)}.f8-step{min-height:104px}}
+/* 流程卡下方的详情折叠 */
+.f8-detail{background:#fff;border:1px solid var(--line);border-radius:12px;margin:8px 0;overflow:hidden}
+.f8-detail>summary{padding:11px 14px;font-size:13px;font-weight:800;cursor:pointer;list-style:none;
+  display:flex;justify-content:space-between;align-items:center}
+.f8-detail>summary::after{content:"▾";color:var(--sub);transition:.2s}
+.f8-detail[open]>summary::after{transform:rotate(180deg)}
+.f8-detail .f8-body{padding:0 14px 12px;border-top:1px dashed var(--line)}
+
+/* ---------- 弹窗吸底操作栏（移动端：上/下一环节 + 听 + 标完成） ---------- */
+#stage-foot{display:none}
+@media(max-width:768px){
+  #stage-foot{display:flex;flex:none;gap:8px;background:#fff;border-top:1px solid var(--line);
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom));align-items:center}
+  #stage-foot button{flex:1;border:1px solid var(--line);background:#F8FAFC;border-radius:12px;
+    min-height:44px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink)}
+  #stage-foot button.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+  #stage-foot button[disabled]{opacity:.35;pointer-events:none}
+}
+
+/* ---------- 长文本阅读友好（两端通用微调） ---------- */
+textarea.f{line-height:1.7}
+.md-preview{line-height:1.7}
+/* 环节内容分组卡片化：相邻 tbl-note + field 视觉成组 */
+.stage-body>.tbl-note{margin-top:18px}
+.stage-body>.tbl-note:first-child{margin-top:6px}
+</style>
+<style>
   /* ---------- 访问口令门（静态站：仅防随手翻，非真鉴权） ----------
      默认不显示；只有 html[data-locked] 时才显示 → 解锁只需摘掉该属性。 */
   html[data-locked] > body > *:not(#gate){display:none !important}
@@ -438,6 +550,41 @@
 <!-- Modal container -->
 <div class="overlay" id="overlay">
   <div class="modal" id="modal"></div>
+</div>
+
+<!-- 沉浸阅读视图（P2：全文阅读 + 朗读高亮） -->
+<div id="reader">
+  <div class="rd-head">
+    <div class="rh-top">
+      <div style="min-width:0">
+        <h3 id="rd-title">阅读</h3>
+        <div class="rh-sub" id="rd-sub"></div>
+      </div>
+      <div class="rh-acts">
+        <button data-action="rd-font" data-d="-1" title="缩小字号">A-</button>
+        <button data-action="rd-font" data-d="1" title="放大字号">A+</button>
+        <button data-action="rd-close" title="关闭">✕</button>
+      </div>
+    </div>
+    <div class="rd-progline"><i id="rd-prog-i"></i></div>
+  </div>
+  <div class="rd-body" id="rd-body"><div class="rd-inner" id="rd-inner"></div></div>
+  <div class="rd-foot">
+    <button data-action="rd-top">↑ 顶部</button>
+    <button class="primary" data-action="tts-toggle" id="rd-playbtn">▶ 朗读</button>
+    <button data-action="rd-prev-sec">‹ 上一节</button>
+    <button data-action="rd-next-sec">下一节 ›</button>
+  </div>
+</div>
+
+<!-- 朗读悬浮控制条（P2） -->
+<div id="tts-bar">
+  <button data-action="tts-prev" title="上一段">⏮</button>
+  <button data-action="tts-toggle" id="tts-playbtn" title="播放/暂停">▶</button>
+  <button data-action="tts-next" title="下一段">⏭</button>
+  <button class="tts-rate" data-action="tts-rate" id="tts-rate-btn" title="语速">1.0×</button>
+  <span class="tts-info" id="tts-info">就绪</span>
+  <button data-action="tts-stop" title="停止">✕</button>
 </div>
 
 <!-- 聚合视图（移动端 Tab 页容器，P0 新增） -->
@@ -655,8 +802,15 @@ function renderModal(){
       <button class="x" data-action="close">✕</button>
     </div>
     <div class="stepper">${stepper}</div>
+    <div id="read-prog"><i></i></div>
     <div id="stage-head-out"></div>
-    <div class="stage-body" id="stage-body"></div>`;
+    <div class="stage-body" id="stage-body"></div>
+    <div id="stage-foot">
+      <button data-action="foot-prev">‹ 上一环节</button>
+      <button data-action="tts-open" title="朗读本环节">🔊</button>
+      <button data-action="foot-done" class="primary">✓ 标完成</button>
+      <button data-action="foot-next">下一环节 ›</button>
+    </div>`;
   renderStage();
 }
 function renderStage(){
@@ -666,11 +820,38 @@ function renderStage(){
   const head=`<div class="stage-head">
     <div class="l"><span class="ic">${s.icon}</span><div><div class="nm">${s.name}</div><div class="ds">${s.desc}</div></div></div>
     <div class="status-sel">
+      <button class="add-btn" data-action="rd-open" style="flex:none">📖 阅读</button>
       ${STATUS.map(v=>`<span class="st ${v} ${st.status===v?'on':''}" data-action="set-status" data-v="${v}">${STATUS_TXT[v]}</span>`).join('')}
     </div></div>`;
   $('#stage-head-out').innerHTML=head;          // 环节头固定在分页区外，不跟着翻
   $('#stage-body').innerHTML=renderStageBody(b,s.id);
   Pager.mount($('#stage-body'),'modal');
+  updateStageFoot();
+  updateReadProg();
+}
+/* 吸底操作栏：上/下一环节可用性 + 标完成按钮文案 */
+function updateStageFoot(){
+  const f=$('#stage-foot');if(!f)return;
+  const prev=f.querySelector('[data-action="foot-prev"]');
+  const next=f.querySelector('[data-action="foot-next"]');
+  const done=f.querySelector('[data-action="foot-done"]');
+  if(prev)prev.disabled=currentStage<=1;
+  if(next)next.disabled=currentStage>=8;
+  const st=bookStage(getBook(),currentStage).status;
+  if(done){done.textContent=st==='done'?'✓ 已完成':'✓ 标完成';done.disabled=st==='done';}
+}
+/* 阅读进度条：移动端跟翻页走，桌面端跟 stage-body 滚动走 */
+function updateReadProg(){
+  const bar=$('#read-prog>i');if(!bar)return;
+  const body=$('#stage-body');if(!body)return;
+  if(isMobile()){
+    const rec=Pager.hosts.find(h=>h.el===body);
+    if(rec&&rec.total>1)bar.style.width=((rec.cur+1)/rec.total*100)+'%';
+    else bar.style.width='100%';
+  }else{
+    const h=body.scrollHeight-body.clientHeight;
+    bar.style.width=h>4?Math.min(100,body.scrollTop/h*100)+'%':'100%';
+  }
 }
 function renderStageBody(b,sid){
   const d=bookStage(b,sid).data;
@@ -924,29 +1105,58 @@ function stage7(b,d){
 /* ----- Stage 8: 书评发布（公众号发布工作流） ----- */
 function stage8(b,d){
   d.publishStatus=d.publishStatus||'草稿';
-  const checklist=[
-    {k:'humanizer',t:'Step5 去AI味（humanizer）'},
-    {k:'hitScore',t:'Step6 爆款量化检查 ≥85分'},
-    {k:'layout',t:'Step8 朱红排版（wechat-publish-template）'},
-    {k:'apiPublish',t:'Step9 API发布到公众号'},
-    {k:'archived',t:'Step10 归档 + Step10.5 知识回填'}
+  const doneDraft=!!(d.draft||'').trim();
+  // 六步流程：写作 → 去AI味 → 爆款检查 → 朱红排版 → API发布 → 归档回填
+  const steps=[
+    {k:'draft',    t:'撰写书评',     s:'以拆书成果为素材写草稿', done:doneDraft,      type:'auto'},
+    {k:'humanizer',t:'去AI味',       s:'humanizer 保住个人人格', done:!!d.humanizer,  type:'check'},
+    {k:'hitScore', t:'爆款量化 ≥85', s:d.hitScore?`当前评分 ${d.hitScore}`:'未评分',done:!!d.hitScore,type:'score'},
+    {k:'layout',   t:'朱红排版',     s:'0个**残留 · 正文15px',  done:!!d.layout,     type:'check'},
+    {k:'apiPublish',t:'API 发布',    s:'发布到公众号',          done:!!d.apiPublish, type:'check'},
+    {k:'archived', t:'归档 + 回填',  s:'归档并沉淀知识',        done:!!d.archived,   type:'check'}
   ];
+  const firstTodo=steps.findIndex(s=>!s.done);
+  const flowHtml=steps.map((s,i)=>{
+    const cls=s.done?'done':(i===firstTodo?'doing':'');
+    const stTxt=s.done?'✓ 完成':(i===firstTodo?'● 进行中':'待开始');
+    const click=s.type!=='auto'?`data-click data-action="f8-toggle" data-k="${s.k}"`:'';
+    return `<div class="f8-step ${cls}" ${click}>
+      <div class="f8-no">${s.done?'✓':i+1}</div>
+      <div class="f8-t">${s.t}</div>
+      <div class="f8-s">${s.s}</div>
+      <div class="f8-st">${stTxt}</div>
+    </div>`;
+  }).join('');
   let h=`
-  <div class="field"><label>书评草稿</label><textarea class="f" data-field="stages.8.data.draft" style="min-height:160px" placeholder="以「可视化拆书助手」的拆书成果为素材，结合个人理解撰写书评…">${esc(d.draft)}</textarea></div>
-  <div class="tbl-note">📣 发布流程参考《内容发布工作流》：写作 → 去AI味 → 爆款检查 → 朱红排版 → API发布 → 归档 + 知识回填。<b>必须经用户确认后方可发布。</b></div>
-  <div class="pub-gate">
-    <h4>⚠️ 发布前确认清单（五道网关）</h4>
-    <ol>
-      <li>稿件已确认，且已去AI味（humanizer）— 保住个人人格</li>
-      <li>爆款量化评分 ≥ 85 分（数据/快讯类 ≥70，且「事实严谨」「风险防御」须满分）</li>
-      <li>封面 + 5-6张内图（小黑手绘风）已生成并逐张QA</li>
-      <li>朱红排版校验通过：0个**残留、正文15px</li>
-      <li>出口IP已在微信白名单；发布前终检（标题/摘要≤120字/封面/内图/加微信话术）</li>
-    </ol>
-  </div>
-  <div class="list-head"><span class="tt">流程状态勾选</span></div>
-  ${checklist.map(c=>{const v=c.k==='hitScore'?!!d.hitScore:(d[c.k]);return `<label class="check"><input type="checkbox" data-action="pub-check" data-k="${c.k}" ${v?'checked':''}> ${c.t}</label>`}).join('')}
-  <div class="field" style="margin-top:10px"><label>爆款量化评分（0-100）</label><input class="f" style="width:140px" data-field="stages.8.data.hitScore" value="${esc(d.hitScore)}" placeholder="如 88"></div>
+  <div class="tbl-note">📣 书评发布工作流：写作 → 去AI味 → 爆款检查 → 朱红排版 → API发布 → 归档回填。<b>必须经用户确认后方可发布。</b>点击步骤卡可标记完成。</div>
+  <div class="flow8">${flowHtml}</div>
+
+  <details class="f8-detail" ${doneDraft?'':'open'}>
+    <summary>✍️ 第1步 · 书评草稿 ${doneDraft?'<span class="pill hit">已撰写</span>':'<span class="pill">待撰写</span>'}</summary>
+    <div class="f8-body"><div class="field" style="margin-top:10px"><textarea class="f" data-field="stages.8.data.draft" style="min-height:150px" placeholder="以拆书成果为素材，结合个人理解撰写书评…">${esc(d.draft)}</textarea></div></div>
+  </details>
+
+  <details class="f8-detail">
+    <summary>⚠️ 发布前确认清单（五道网关）</summary>
+    <div class="f8-body"><div class="pub-gate" style="margin:10px 0 0">
+      <ol>
+        <li>稿件已确认，且已去AI味（humanizer）— 保住个人人格</li>
+        <li>爆款量化评分 ≥ 85 分（数据/快讯类 ≥70，且「事实严谨」「风险防御」须满分）</li>
+        <li>封面 + 5-6张内图（小黑手绘风）已生成并逐张QA</li>
+        <li>朱红排版校验通过：0个**残留、正文15px</li>
+        <li>出口IP已在微信白名单；发布前终检（标题/摘要≤120字/封面/内图/加微信话术）</li>
+      </ol>
+    </div></div>
+  </details>
+
+  <details class="f8-detail">
+    <summary>🔢 爆款评分填写</summary>
+    <div class="f8-body">
+      <div class="field" style="margin-top:10px"><label>爆款量化评分（0-100）</label><input class="f" style="width:140px" data-field="stages.8.data.hitScore" value="${esc(d.hitScore)}" placeholder="如 88"></div>
+      <div class="tbl-note" style="margin:6px 0">填好评分后，第3步卡片自动变「完成」；其余步骤点卡片标记。</div>
+    </div>
+  </details>
+
   <div class="row" style="margin:8px 0 14px">
     <span class="mini" style="margin:0">发布状态：</span>
     ${['草稿','待确认','已发布'].map(s=>`<span class="st ${d.publishStatus===s?'on':''}" data-action="pub-status" data-v="${s}" style="${d.publishStatus===s?(s==='已发布'?'background:var(--green);border-color:var(--green);color:#fff':(s==='待确认'?'background:var(--orange);border-color:var(--orange);color:#fff':'background:var(--blue);border-color:var(--blue);color:#fff')):''}">${s}</span>`).join('')}
@@ -1030,6 +1240,7 @@ const Pager={
     if(btns[0])btns[0].disabled=rec.cur===0;
     if(btns[1])btns[1].disabled=rec.cur===rec.total-1;
     rec.el._pgCur=rec.cur;
+    if(typeof updateReadProg==='function')updateReadProg();
   },
   _bind(rec){
     const host=rec.el;if(host._pgBound)return;host._pgBound=true;
@@ -1179,6 +1390,273 @@ window.addEventListener('resize',function(){
 });
 
 /* =========================================================
+   P2 内容提取层：把某书某环节的数据转成「可阅读的章节」
+   供阅读视图渲染 + TTS 朗读共用（单一真相，不解析 DOM）
+   返回: [{t:'小节标题', paras:['段落',...]}, ...]
+   ========================================================= */
+function extractReadable(b,sid){
+  const d=bookStage(b,sid).data;const S=[];
+  const sec=(t,...paras)=>{const p=paras.map(x=>(x==null?'':String(x)).trim()).filter(Boolean);if(p.length)S.push({t,paras:p});};
+  const lines=s=>String(s||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  switch(sid){
+    case 1:
+      sec('书籍信息',`《${b.title}》 ${b.author||''}`,b.source&&`来源：${b.source}`,(b.tags||[]).length&&'标签：'+b.tags.join('、'));
+      (d.chapters||[]).forEach((c,i)=>sec(`章节 ${i+1}：${c.title||'未命名'}`,c.summary,c.note));
+      if(d.reason)sec('入库理由',d.reason);
+      break;
+    case 2:
+      sec('一句话总结',d.oneLiner);
+      sec('这本书在回答什么问题',d.coreQuestion);
+      sec('作者的答案',d.authorAnswer);
+      sec('作者信息',d.authorInfo);
+      sec('写作背景',d.authorBackground);
+      if(d.authorWorks)sec('作者其他作品',...lines(d.authorWorks));
+      if(d.authorRelations)sec('名人关联',...lines(d.authorRelations));
+      (d.concepts||[]).forEach(c=>sec(`核心概念：${c.name||'未命名'}`,c.definition,c.plain&&`人话翻译：${c.plain}`,c.whenUse&&`什么时候用：${c.whenUse}`));
+      if(d.insights)sec('深度洞察',...lines(d.insights));
+      if(d.expertReviews)sec('专家与媒体评价',...lines(d.expertReviews));
+      if(d.hotReviews)sec('网络热评',...lines(d.hotReviews));
+      break;
+    case 3:
+      (d.chapters||[]).forEach(c=>{
+        sec(`章节：${c.title||'未命名'}`,c.summary,c.personal&&`个人理解：${c.personal}`);
+        const qs=lines(c.quotes);if(qs.length)S.push({t:`${c.title||''} · 金句`,paras:qs,quote:true});
+        const cs=lines(c.cases);if(cs.length)S.push({t:`${c.title||''} · 案例`,paras:cs});
+        const dc=lines(c.deepCard);if(dc.length)S.push({t:`${c.title||''} · 六维深化卡`,paras:dc});
+      });
+      break;
+    case 4:
+      (d.chain||[]).forEach((c,i)=>sec(`逻辑环节 ${i+1}：${c.label||'未命名'}`,c.note));
+      break;
+    case 5:
+      (d.recommended||[]).filter(r=>r.isKey).forEach(r=>sec(`重点章节：${r.title}`,r.rationale));
+      sec('针对性阅读总结',d.note);
+      break;
+    case 6:
+      (d.cards||[]).forEach(c=>{
+        sec(`${c.type||'概念卡'}：${c.concept||'未命名'}`,c.oneLiner,...lines(c.points),c.myThought&&`我的思考：${c.myThought}`);
+      });
+      break;
+    case 7:
+      sec('行动清单',...(d.actions||[]).map((a,i)=>`${i+1}. ${a.content||''}${a.verify?`（做到算数：${a.verify}）`:''}${a.done?' ✅':''}`));
+      break;
+    case 8:
+      sec('书评草稿',...lines(d.draft));
+      sec('发布状态',`当前状态：${d.publishStatus||'草稿'}${d.hitScore?`，爆款评分 ${d.hitScore}`:''}`);
+      break;
+  }
+  return S;
+}
+/* 把所有环节合并成「全书阅读」 */
+function extractBook(b){
+  const S=[];
+  STAGES.forEach(s=>{
+    const secs=extractReadable(b,s.id);
+    if(secs.length)S.push({t:`${s.icon} 环节${s.id} · ${s.name}`,paras:[],header:true},...secs);
+  });
+  return S;
+}
+
+/* =========================================================
+   P2 TTS 朗读引擎（Web Speech API，零依赖）
+   设计要点：
+   - 长文本自动分段：每段一条 utterance，队列顺播。iOS/桌面 Chrome
+     对超长单条 utterance 会静默中断，分段队列是标准解法。
+   - 移动端自动播放限制：speechSynthesis 必须由用户手势触发，
+     因此播放只由点击启动；首段在用户点击的调用栈内 speak()。
+   - Chrome 桌面端长 utterance 约 15s 自动暂停 → keepAlive 定时 resume()。
+   - 高亮同步：onstart 给对应段落元素加 .tts-cur 并滚动到可视区。
+   ========================================================= */
+const TTS={
+  segs:[],idx:-1,playing:false,rate:1.0,supported:('speechSynthesis' in window),
+  _keepAlive:null,_hl:null,_onState:null,
+  RATES:[0.8,1.0,1.2,1.5,2.0],
+  init(){
+    if(!this.supported)return;
+    // 部分浏览器 voices 异步加载，先触发一次
+    try{speechSynthesis.getVoices();}catch(e){}
+  },
+  /* segs: [{text, el|null}]；el 用于高亮。onState(playing) 同步按钮文案 */
+  load(segs,onState){
+    this.stop(false);
+    this.segs=segs.filter(s=>s.text&&s.text.trim());
+    this.idx=-1;this._onState=onState||null;
+    this._bar(true);
+    this._info(this.segs.length?`共 ${this.segs.length} 段，点 ▶ 开始`:'无可读内容');
+  },
+  play(){
+    if(!this.supported){this._info('当前浏览器不支持朗读');toast('当前浏览器不支持语音朗读');return;}
+    if(!this.segs.length)return;
+    if(this.playing){this.pause();return;}
+    if(speechSynthesis.paused&&this.idx>=0){      // 继续（iOS 需直接 resume）
+      speechSynthesis.resume();this.playing=true;this._syncBtn();this._keepAliveStart();return;
+    }
+    this._speak(this.idx<0?0:this.idx);
+  },
+  pause(){
+    if(!this.playing)return;
+    speechSynthesis.pause();this.playing=false;this._syncBtn();this._keepAliveStop();
+    this._info(`已暂停 ${this.idx+1}/${this.segs.length}`);
+  },
+  stop(clearBar=true){
+    if(this.supported){try{speechSynthesis.cancel();}catch(e){}}
+    this.playing=false;this._keepAliveStop();this._clearHL();
+    this._syncBtn();
+    if(clearBar)this._bar(false);
+  },
+  next(){if(this.idx<this.segs.length-1)this._jump(this.idx+1);},
+  prev(){if(this.idx>0)this._jump(this.idx-1);},
+  jumpTo(i){if(i>=0&&i<this.segs.length)this._jump(i);},
+  cycleRate(){
+    const i=(this.RATES.indexOf(this.rate)+1)%this.RATES.length;
+    this.rate=this.RATES[i];
+    const b=document.getElementById('tts-rate-btn');if(b)b.textContent=this.rate.toFixed(1)+'×';
+    if(this.playing)this._speak(this.idx);          // 重说当前段以应用新语速
+    else this._info(`语速 ${this.rate.toFixed(1)}×`);
+  },
+  _jump(i){const was=this.playing||speechSynthesis.speaking;this._speak(i);if(!was)this._info(`第 ${i+1}/${this.segs.length} 段（点 ▶ 播放）`);},
+  _speak(i){
+    if(!this.supported||!this.segs[i])return;
+    speechSynthesis.cancel();                        // 先清空队列，防叠音
+    this.idx=i;
+    const u=new SpeechSynthesisUtterance(this.segs[i].text.trim());
+    u.rate=this.rate;u.lang='zh-CN';
+    const v=this._pickVoice();if(v)u.voice=v;
+    u.onstart=()=>{this.playing=true;this._syncBtn();this._hl(this.segs[i]);this._info(`朗读中 ${i+1}/${this.segs.length}`);};
+    u.onend=()=>{if(this.idx!==i)return;             // 被打断（跳段/停止）则不接力
+      if(i+1<this.segs.length)this._speak(i+1);
+      else{this.playing=false;this._syncBtn();this._keepAliveStop();this._clearHL();this._info('✅ 朗读完毕');}};
+    u.onerror=(e)=>{if(e.error==='interrupted'||e.error==='canceled')return;
+      if(i+1<this.segs.length)this._speak(i+1);      // 单段失败跳过错段，不中断整篇
+      else{this.playing=false;this._syncBtn();this._info('朗读出错');}};
+    speechSynthesis.speak(u);
+    this._keepAliveStart();
+  },
+  _pickVoice(){
+    try{const vs=speechSynthesis.getVoices();
+      return vs.find(v=>/zh[-_]CN/i.test(v.lang)&&/xiaoxiao|ting|mei|hui|yaoyao|google/i.test(v.name))
+          || vs.find(v=>/zh[-_]CN/i.test(v.lang))||vs.find(v=>/^zh/i.test(v.lang))||null;}catch(e){return null;}
+  },
+  /* Chrome 桌面端 >15s utterance 自动暂停的已知 bug：周期性 resume 保活 */
+  _keepAliveStart(){
+    this._keepAliveStop();
+    this._keepAlive=setInterval(()=>{try{if(speechSynthesis.speaking&&!speechSynthesis.paused&&this.playing){/* noop */}else if(this.playing)speechSynthesis.resume();}catch(e){}},5000);
+  },
+  _keepAliveStop(){if(this._keepAlive){clearInterval(this._keepAlive);this._keepAlive=null;}},
+  _hl(seg){
+    this._clearHL();
+    if(seg&&seg.el){seg.el.classList.add('tts-cur');this._hlEl=seg.el;
+      seg.el.scrollIntoView({block:'center',behavior:'smooth'});}
+  },
+  _clearHL(){if(this._hlEl){this._hlEl.classList.remove('tts-cur');this._hlEl=null;}},
+  _bar(show){const b=document.getElementById('tts-bar');if(b)b.classList.toggle('show',!!show);},
+  _info(t){const i=document.getElementById('tts-info');if(i)i.textContent=t;},
+  _syncBtn(){
+    const t=this.playing?'⏸':'▶';
+    const b1=document.getElementById('tts-playbtn');if(b1)b1.textContent=t;
+    const b2=document.getElementById('rd-playbtn');if(b2)b2.textContent=this.playing?'⏸ 暂停':'▶ 朗读';
+    if(this._onState)this._onState(this.playing);
+  }
+};
+TTS.init();
+
+/* =========================================================
+   P2 沉浸阅读视图
+   - 渲染 extractReadable 的章节，每段一个 <p class="rd-p tts-seg">
+   - 朗读高亮直接落在段落元素上；点段落可从该处开始朗读
+   - 记忆阅读位置（localStorage 按 book+scope 存 scrollTop）
+   - 顶部阅读进度条随滚动前进
+   ========================================================= */
+const Reader={
+  book:null,scope:'stage',sid:1,_segs:[],
+  open(b,sid){
+    this.book=b;this.sid=sid||currentStage||1;
+    this.render();
+    $('#reader').classList.add('show');
+    this._restoreScroll();
+    const secs=this._segs.map(s=>({text:s.text,el:s.el}));
+    TTS.load(secs);
+    document.body.style.overflow='hidden';
+  },
+  close(){
+    TTS.stop();
+    $('#reader').classList.remove('show');
+    document.body.style.overflow='';
+  },
+  render(){
+    const b=this.book;if(!b)return;
+    const secs=this.scope==='book'?extractBook(b):extractReadable(b,this.sid);
+    const st=STAGES.find(x=>x.id===this.sid);
+    $('#rd-title').textContent=b.title;
+    $('#rd-sub').textContent=this.scope==='book'?'全书阅读':`${st?st.icon+' 环节'+this.sid+' · '+st.name:''}`;
+    const inner=$('#rd-inner');
+    if(!secs.length){inner.innerHTML='<div class="empty">本环节还没有可阅读的内容。</div>';this._segs=[];return;}
+    let html='';this._segs=[];
+    secs.forEach(sec=>{
+      if(sec.header){html+=`<div class="rd-sec"><div class="rs-t" style="font-size:17px">${esc(sec.t)}</div></div>`;return;}
+      html+=`<div class="rd-sec"><div class="rs-t">${esc(sec.t)}</div>`;
+      sec.paras.forEach(p=>{
+        const i=this._segs.length;
+        this._segs.push({text:p,el:null});
+        const cls=sec.quote?'rd-q tts-seg':'rd-p tts-seg';
+        html+=`<${sec.quote?'div':'p'} class="${cls}" data-seg="${i}">${esc(p)}</${sec.quote?'div':'p'}>`;
+      });
+      html+='</div>';
+    });
+    inner.innerHTML=html;
+    $$('.tts-seg',inner).forEach(el=>{const i=+el.dataset.seg;this._segs[i].el=el;});
+    this._applyFont();
+  },
+  toggleScope(){
+    this.scope=this.scope==='book'?'stage':'book';
+    this.render();this._segs.length&&TTS.load(this._segs.map(s=>({text:s.text,el:s.el})));
+    $('#rd-body').scrollTop=0;
+  },
+  /* 字号档位 15/17/19/21 */
+  FONT_SIZES:[15,17,19,21],
+  _fsIdx:+(localStorage.getItem('rd_fs_idx')||1),
+  font(d){
+    this._fsIdx=Math.max(0,Math.min(this.FONT_SIZES.length-1,this._fsIdx+d));
+    try{localStorage.setItem('rd_fs_idx',this._fsIdx);}catch(e){}
+    this._applyFont();
+  },
+  _applyFont(){document.documentElement.style.setProperty('--rd-fs',this.FONT_SIZES[this._fsIdx]+'px');},
+  _posKey(){return 'rd_pos_'+(this.book?this.book.id:'')+'_'+this.scope+'_'+this.sid;},
+  _saveScroll(){try{localStorage.setItem(this._posKey(),$('#rd-body').scrollTop);}catch(e){}},
+  _restoreScroll(){
+    try{const v=+localStorage.getItem(this._posKey());if(v>0)$('#rd-body').scrollTop=v;}catch(e){}
+  },
+  /* 进度条 + 位置记忆（滚动监听在 init 里挂） */
+  _onScroll(){
+    const el=$('#rd-body');const h=el.scrollHeight-el.clientHeight;
+    const pct=h>0?Math.min(100,el.scrollTop/h*100):100;
+    const bar=$('#rd-prog-i');if(bar)bar.style.width=pct+'%';
+    clearTimeout(this._st);this._st=setTimeout(()=>this._saveScroll(),250);
+  },
+  init(){
+    $('#rd-body').addEventListener('scroll',()=>this._onScroll(),{passive:true});
+    // 点段落 → 从该段开始朗读
+    $('#rd-inner').addEventListener('click',e=>{
+      const seg=e.target.closest('.tts-seg');if(!seg)return;
+      const i=+seg.dataset.seg;
+      if(TTS.playing)TTS.jumpTo(i);
+      else{TTS.jumpTo(i);TTS.play();}
+    });
+  }
+};
+
+/* 弹窗「🔊」直接读当前环节：不开阅读视图，段元素用 stage-body 里的块做高亮 */
+function ttsCurrentStage(){
+  const b=getBook();if(!b)return;
+  const secs=extractReadable(b,currentStage);
+  const flat=[];
+  secs.forEach(sec=>{if(!sec.header)sec.paras.forEach(p=>flat.push({text:(sec.t?sec.t+'。':'')+p,el:null}));});
+  if(!flat.length){toast('本环节暂无可读内容');return;}
+  TTS.load(flat);
+  TTS.play();
+}
+
+/* =========================================================
    EVENTS
    ========================================================= */
 document.addEventListener('click',e=>{
@@ -1216,6 +1694,34 @@ document.addEventListener('click',e=>{
   if(a==='pub-check'){const k=t.dataset.k;const d8=getBook().stages[8].data;if(k==='hitScore'){d8.hitScore=t.checked?'85':'';}else{d8[k]=t.checked;}save();return;}
   if(a==='pub-status'){getBook().stages[8].data.publishStatus=t.dataset.v;save();renderStage();return;}
   if(a==='pub-confirm'){openPubConfirm();return;}
+  /* ---- P2 环节8 流程步骤卡 ---- */
+  if(a==='f8-toggle'){const k=t.dataset.k;const d8=getBook().stages[8].data;
+    if(k==='hitScore'){d8.hitScore=d8.hitScore?'':'85';}else{d8[k]=!d8[k];}
+    save();renderStage();return;}
+  /* ---- P2 朗读 / 阅读视图 ---- */
+  if(a==='tts-open'){ttsCurrentStage();return;}
+  if(a==='tts-toggle'){TTS.play();return;}
+  if(a==='tts-prev'){TTS.prev();return;}
+  if(a==='tts-next'){TTS.next();return;}
+  if(a==='tts-rate'){TTS.cycleRate();return;}
+  if(a==='tts-stop'){TTS.stop();return;}
+  if(a==='rd-open'){const b=getBook();if(b)Reader.open(b,currentStage);return;}
+  if(a==='rd-close'){Reader.close();return;}
+  if(a==='rd-font'){Reader.font(+t.dataset.d);return;}
+  if(a==='rd-top'){$('#rd-body').scrollTo({top:0,behavior:'smooth'});return;}
+  if(a==='rd-prev-sec'||a==='rd-next-sec'){
+    const dir=a==='rd-next-sec'?1:-1;
+    const secs=$$('#rd-inner .rs-t');if(!secs.length)return;
+    const body=$('#rd-body');const y=body.scrollTop;let target=null;
+    if(dir>0){for(const s of secs){if(s.offsetTop>y+8){target=s;break;}}}
+    else{for(let i=secs.length-1;i>=0;i--){if(secs[i].offsetTop<y-8){target=secs[i];break;}}}
+    if(target)body.scrollTo({top:target.offsetTop-8,behavior:'smooth'});
+    return;
+  }
+  /* ---- P2 移动端弹窗吸底操作栏 ---- */
+  if(a==='foot-prev'){if(currentStage>1){currentStage--;renderModal();}return;}
+  if(a==='foot-next'){if(currentStage<8){currentStage++;renderModal();}return;}
+  if(a==='foot-done'){const b=getBook();b.stages[currentStage].status='done';save();renderStage();renderAll();toast('已标为完成');return;}
 });
 
 document.addEventListener('input',e=>{
@@ -1228,6 +1734,10 @@ document.addEventListener('input',e=>{
     if(!r){r={title:kn.dataset.title,isKey:false,rationale:''};rec.recommended.push(r);}
     r.rationale=kn.value;save();}
 });
+// 桌面端弹窗滚动 → 阅读进度条
+document.addEventListener('scroll',e=>{
+  if(e.target&&e.target.id==='stage-body')updateReadProg();
+},true);
 // checkbox change within stage5 key-toggle is click-handled; checkbox for key handled above.
 
 function getBook(){return state.books.find(x=>x.id===currentBookId)}
@@ -1316,14 +1826,16 @@ $('#search').addEventListener('input',e=>{searchText=e.target.value;renderGrid()
 $$('.chip').forEach(c=>c.addEventListener('click',()=>{$$('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');filterMode=c.dataset.filter;renderGrid();}));
 // delegate chip clicks inside dynamic? chips are static in toolbar, fine.
 
+Reader.init();
+
 /* ---- init ---- */
-const DATA_VERSION=8; // v8=迁移语义升级：state.js 是唯一真相，版本升级时整体重播种（localStorage 只是缓存，不再合并保留）；v7=修复迁移：版本号一致但内容缺深化卡/对比分析时也强制刷新；v6=冀石雨借鉴
-function demoStale(state){ // 内容完整性检查：任一书籍缺关键字段（深化卡/对比分析/六维）→ 视为旧数据，强制重播种
-  return (state.books||[]).some(b=>{
-    const chs=(b.stages&&b.stages[3]&&b.stages[3].data&&b.stages[3].data.chapters)||[];
-    const s2=(b.stages&&b.stages[2]&&b.stages[2].data)||{};
-    return !chs.some(c=>c.deepCard)||!s2.contrast||!s2.sixDims;
-  });
+const DATA_VERSION=8; // v8=迁移语义升级：state.js 是唯一真相，版本升级时整体重播种（localStorage 只是缓存，不再合并保留）；v7=修复迁移：版本号一致但内容缺深化卡/对比分析时也强制刷新演示书；v6=冀石雨借鉴
+function demoStale(state){ // 内容完整性检查：内置书存在但缺关键字段 → 视为旧数据
+  const f=(state.books||[]).find(b=>b.title==='财务自由之路');
+  if(!f)return false;
+  const chs=(f.stages&&f.stages[3]&&f.stages[3].data&&f.stages[3].data.chapters)||[];
+  const s2=(f.stages&&f.stages[2]&&f.stages[2].data)||{};
+  return !chs.some(c=>c.deepCard)||!s2.contrast||!s2.sixDims;
 }
 /* 发布包版本戳：publish-online.js 注入 window.READING_DATA.buildStamp
    本地源码 state.js 没有该字段（remoteStamp=''）→ 本地行为完全不变；
