@@ -82,6 +82,38 @@ python gen-ledger.py
 | `LEDGER_WORKBENCH` | 台账头部的在线工作台链接 | 留空则不写这行 |
 | `TARGET` | 年度目标本数 | `50` |
 
+### 沉淀 · 检索 · 看板 · 听书 · 个性化（v1.8 新增）
+
+下面所有命令都在**工作台根目录**下运行，`--data` 指向该目录：
+
+```bash
+# 随读随记（笔记/要点/洞察，追加不覆盖，写完自动重建索引）
+python note-add.py --data . --book "<书名>" --kind insight --text "<你的思考>" --tags 理财,写作
+
+# 建索引（八环节产出 + 笔记 + Obsidian 卡片），--vault 可选，缺省读 $READING_VAULT
+python kb-build.py --data . --vault "$READING_VAULT"
+
+# 跨书检索；--md 导出成可直接粘贴的写作上下文；--recent N 看最近的卡
+python kb-search.py --data . "复利 守富" --topk 5
+python kb-search.py --data . "止损 原则" --md
+
+# 生成离线知识看板（单文件 HTML，双击即开，也能随发布包上线）
+python gen-dashboard.py --data .
+
+# 高质量语音朗读（神经网络语音，断网自动降级）
+python tts.py --check                                   # 环境体检
+python tts.py --data . --book "<书名>" --src stage --sid 6 --rate "+15%"
+python tts.py --data . --book "<书名>" --src raw --merge  # 合并整本
+
+# 个性化：从阅读行为学偏好 → 下一本读什么 / 重点怎么定
+python personalize.py --data .            # 只看报告
+python personalize.py --data . --apply    # 写回 state.js（自动备份）
+```
+
+产出落点：`data/notes/<书名>.jsonl`（笔记流水）、`data/kb/kb-index.json`（索引）、`data/kb/dashboard.html`（看板）、`data/audio/<书名>/`（音频）、`data/profile-learned.json`（画像）。
+
+`tts.py` 依赖 `edge-tts`；缺失时脚本会自动改用受管 venv 的解释器重跑，命令行里打 `python tts.py --check` 就能看到体检结果。
+
 ## 打包与发布（维护者）
 
 ### 打包
@@ -110,7 +142,7 @@ python build.py
    | 一句话描述 description | SKILL.md frontmatter 里的长 description（触发词全在里面） |
    | description_zh / description_en | frontmatter 对应字段 |
    | 分类 category | `education` |
-   | 版本 version | `1.7.0`（每次提审 +1） |
+   | 版本 version | `1.8.0`（每次提审 +1） |
    | 作者 author | （填写作者署名） |
    | 图标 | 512×512 PNG（已包含：`ai-reading-system/icon.png`） |
 3. 上传 `dist/ai-reading-system-marketplace.zip`（41KB，≤3MB）
@@ -156,7 +188,18 @@ ai-reading-system/          # 包内所有文件平铺在这一层，无子目�
 ├── split_fulltext.js       # 全文切章
 ├── pipeline.js             # 校验网关 + 页码注入 + 数据提取
 ├── save-export.js          # 工作台导出 JSON 回填
-├── publish-online.js       # 从源码生成在线工作台发布包（带版权红线自检 + buildStamp）
+├── wf5-knowledge-os.md     # 本地知识沉淀与检索、离线看板（WF5）
+├── wf6-listen-personalize.md # 高质量语音朗读 + 个性化闭环（WF6）
+├── note-add.py             # 随读笔记/洞察落盘（jsonl 追加，写完自动重建索引）
+├── kb-build.py             # 统一索引（八环节 + 笔记 + Obsidian 卡片）
+├── kb-search.py            # BM25 检索 + 过滤 + 导出 Markdown 上下文
+├── gen-dashboard.py        # 生成离线单文件知识看板 data/kb/dashboard.html
+├── tts.py                  # 神经网络语音合成 mp3（听原文/听拆解，断网降级）
+├── personalize.py          # 从阅读行为学偏好 → profile-learned.json → 选书与重点定制
+├── lib_reading.py          # 上述脚本共享的读取/切分/工具库
+├── sync-vault.py           # Obsidian 知识库三处沉淀（WF2.5 硬网关）
+├── sync-workbench.py       # 模板 → 运行工作台同步（保留口令/昵称等个人化）
+├── publish-online.js       # 从源码生成在线工作台发布包（版权红线自检 + buildStamp + 看板进包）
 ├── test-gate.py            # 口令门真实浏览器 7 项回归
 ├── test-stamp.py           # 发布版本戳 2 项回归（旧缓存自动重播种）
 ├── test-mobile.py          # 移动端双视口 35 项回归
@@ -179,12 +222,13 @@ ai-reading-system/          # 包内所有文件平铺在这一层，无子目�
 ## 复盘与演进
 
 - [一年50本 AI 阅读执行系统 · 复盘](复盘-一年50本AI阅读执行系统.md)：系统架构、8 个环节、4 条工作流、关键设计决策（金句硬网关 / 案例软网关、buildStamp 缓存指纹、口令门、版权红线）、事故复盘与可改进点。
-- 本文档对应技能版本 **v1.7.0**（脱敏公开版：不含作者昵称、个人书名、本地路径、真实口令或个人线上链接）。
+- 本文档对应技能版本 **v1.8.0**（脱敏公开版：不含作者昵称、个人书名、本地路径、真实口令或个人线上链接）。
 
 ### 版本记录
 
 | 版本 | 变更 |
 |---|---|
+| v1.8.0 | **读完用得上 + 个性化闭环**：① 本地知识沉淀与检索——`note-add.py` 随读随记（jsonl 追加）、`kb-build.py` 把八环节产出/笔记/Obsidian 卡片统一建 BM25 索引、`kb-search.py` 一条命令跨书检索并可 `--md` 导出可复用上下文；② 可视化——`gen-dashboard.py` 生成**离线单文件**看板（年度进度环 / 八环节漏斗 / 每书 8 格矩阵 / 知识结构力导向网络 / 标签与卡片分布 / 行动与复习状态），`publish-online.js` 会自动把它带进线上包，工作台顶部新增「📈 知识看板」入口；③ 高质量语音——`tts.py` 用神经网络语音把原文或环节产出合成为 mp3（分章落盘、manifest 续跑、ffmpeg 合并整本、附朗读稿，断网自动降级系统语音）；④ 个性化——`personalize.py` 从完成深度/复习/行动执行/笔记/标签学出主题偏好与薄弱点，产出 `profile-learned.json`，给出下一本推荐与节奏建议，反哺环节 5/6/8。另新增 `sync-workbench.py`（模板→运行工作台，保留个人化）、`publish-online.js` 支持 `--allow-partial`（在读书不再误拦）且改为**写包前拦截** |
 | v1.7.0 | **行动落地闭环**：首页新增「✅ 行动收件箱」——跨全部书汇总未完成行动、按 `due` 排期取今日精选 3 条、首页一键「✓ 执行」；行动字段 `due`（默认 +14 天）/ `effort`（2min/15min/habit）/ `doneAt`（执行时间戳为真相源，`done` 由它派生，杜绝双源不一致）；新增「行动执行动能」统计（累计执行率 / 本周新执行 / 待执行）。README 补工作台运行时自动补字段说明 |
 | v1.6.0 | **知识留存闭环**：首页新增「📊 留存看板」——① 完成漏斗（8 环节逐环 `done/总数` 与完成率，红区标出原子笔记/行动清单/书评发布等价值流失环节）；② 复习队列（原子卡按 Leitner 间隔 1/2/4/7/15/30 天自动排期，「✓ 已复习」按记忆强度推进并留 `history`）。新增留存字段 `review`（间隔重复计划）与 `doneAt`（环节完成时间戳），`migrateRetain()` 运行时幂等自迁移，老数据打开即补齐 |
 | v1.5.0 | **阅读体验大改版**：沉浸阅读视图（分段渲染、字号四档、阅读进度条、阅读位置记忆）；语音朗读（Web Speech 长文本自动分段、当前段落高亮同步、0.8–2.0× 语速、跳段、点段落即读，移动端手势触发 + Chrome 长句保活）；环节8 书评流程重构为六步状态步骤卡（点击标完成、清单折叠、2/3/6 列自适应）；移动端弹窗新增吸底操作栏（上/下一环节、标完成、🔊 朗读）与弹窗阅读进度条。新增 `test-reader.py` 30 项回归 |

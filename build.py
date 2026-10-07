@@ -155,7 +155,9 @@ def check_no_personal_leak():
         (r'https?://[^\s)\'"]*workbuddy\.host', '个人线上工作台链接'),
         (r'https?://[^\s)\'"]*workbuddy\.cn(?!/open)', '个人 WorkBuddy 域名'),
         (r'\b[A-Z]{4}-[A-Z0-9]{4}\b', '疑似真实访问口令（形如 XXXX-XXXX）'),
-        (r'[Dd]:/dwjotn|02 Wiki', '个人 vault 路径'),
+        # 注意：`02 Wiki` / `01 Raw Sources` 是 vault 内的通用目录名（技能规范的一部分），
+        # 不含个人信息，不算泄漏；真正要拦的是**绝对路径**（盘符 + 个人目录名）。
+        (r'[Dd]:/dwjotn', '个人 vault 绝对路径'),
         (r'C:/Users/Administrator|C:\\\\Users\\\\Administrator', '本机用户名路径'),
     ]
     leaks = []

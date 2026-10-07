@@ -549,6 +549,7 @@ textarea.f{line-height:1.7}
     <div class="top-actions">
       <button class="btn btn-light" data-action="add-book">＋ 新增书籍</button>
       <button class="btn btn-ghost" data-action="profile">🎯 身份画像</button>
+      <button class="btn btn-ghost" data-action="insights">📈 知识看板</button>
       <button class="btn btn-ghost" data-action="export">⬇ 导出</button>
       <button class="btn btn-ghost" data-action="import">⬆ 导入</button>
       <button class="btn btn-ghost" data-action="reset">↺ 示例</button>
@@ -1842,6 +1843,14 @@ function ttsCurrentStage(){
   TTS.play();
 }
 
+/* 知识看板：本地/线上都先探测文件在不在，缺了给明确指引而不是 404 */
+function openInsights(){
+  fetch('data/kb/dashboard.html',{method:'HEAD'}).then(r=>{
+    if(r.ok) location.href='data/kb/dashboard.html';
+    else toast('看板还没生成：本地跑 gen-dashboard.py 后重新发布即可');
+  }).catch(()=>toast('看板还没生成：本地跑 gen-dashboard.py 后重新发布即可'));
+}
+
 /* =========================================================
    EVENTS
    ========================================================= */
@@ -1870,6 +1879,7 @@ document.addEventListener('click',e=>{
   if(a==='close'){$('#overlay').classList.remove('show');renderAll();return;}
   if(a==='add-book'){openAddBook();return;}
   if(a==='profile'){openProfile();return;}
+  if(a==='insights'){openInsights();return;}
   if(a==='export'){exportData();return;}
   if(a==='import'){$('#file-input').click();return;}
   if(a==='reset'){if(confirm('重置为示例数据？当前数据将被覆盖。')){state=demoData();save();renderAll();toast('已重置为示例数据')}return;}

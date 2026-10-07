@@ -71,7 +71,17 @@ books.forEach(b => {
   if (n !== 8) { console.log('  ⚠️ ' + (b.title || '(无标题)') + ' 环节数 ' + n + '（非 8）'); bad++; }
 });
 console.log(books.length + ' 本书环节检查完毕' + (bad ? '，' + bad + ' 本异常' : '，全部 8 环节齐全 ✅'));
-if (bad) console.log('   （只想发某一本：加 --title "<书名片段>" 缩小检查范围）');
+/* 环节不全必须在“写包之前”拦（2026-10-08 修正：原先先写包再报错，留下一个看着可发的被拒包）。
+   但“正在读的书”本来就没跑满 8 环节，属于正常态 → 显式加 --allow-partial 才能带病发布。 */
+if (bad) {
+  if (!process.argv.includes('--allow-partial')) {
+    console.error('\n❌ 有 ' + bad + ' 本书环节不全（<8）。');
+    console.error('   若是正常在读书、确实要发：重跑一次并加 --allow-partial');
+    console.error('   否则先补齐环节再发布。（只想检查某一本：加 --title "<书名片段>"）');
+    process.exit(1);
+  }
+  console.log('⚠️  --allow-partial 已指定：' + bad + ' 本在读书（环节<8）照常进包');
+}
 
 /* —— 落盘（注入发布版本戳 buildStamp）——
    前端凭它判断"线上数据已更新"，让老访客浏览器里的旧 localStorage 缓存自动重播种。
@@ -87,6 +97,16 @@ console.log('发布版本戳 buildStamp:', stamp, '（数据一旦变化，访�
 fs.mkdirSync(path.join(DIST, 'data'), { recursive: true });
 fs.writeFileSync(path.join(DIST, 'index.html'), src);
 fs.writeFileSync(path.join(DIST, 'data', 'state.js'), stateOut);
+
+/* —— 可选：知识看板（WF5 产物）存在则一起进包 —— */
+const kbSrc = path.join(WORKDIR, 'data', 'kb', 'dashboard.html');
+if (fs.existsSync(kbSrc)) {
+  fs.mkdirSync(path.join(DIST, 'data', 'kb'), { recursive: true });
+  fs.writeFileSync(path.join(DIST, 'data', 'kb', 'dashboard.html'), fs.readFileSync(kbSrc));
+  console.log('知识看板进包 ✅  data/kb/dashboard.html');
+} else {
+  console.log('ℹ️  未找到 data/kb/dashboard.html（gen-dashboard.py 生成），线上点「📈 知识看板」会提示未生成');
+}
 
 /* —— 复核发布包 —— */
 const out = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
@@ -106,8 +126,4 @@ console.log('发布包书全文特征: ✅ 无 ≥500 字连续中文片段');
 console.log('发布包内容: ' +
   fs.statSync(path.join(DIST, 'index.html')).size + ' B index.html + ' +
   fs.statSync(path.join(DIST, 'data', 'state.js')).size + ' B state.js');
-if (bad) {
-  console.error('\n❌ 有书环节不全，先补齐再发布');
-  process.exit(1);
-}
 console.log('\n✅ ' + DIST + ' 已就绪，下一步: 跑 test-gate.py 回归 → 部署');
