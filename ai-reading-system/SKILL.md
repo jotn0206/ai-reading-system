@@ -101,6 +101,29 @@ python sync-workbench.py --data <工作目录> --apply   # 先备份运行版再
 
 **包内禁止出现**：真实口令、个人线上链接、本机绝对路径（盘符 + 用户名）。本机真实路径只写在工作区记忆里，不进包。
 
+**「全部更新一遍」的标准动线**（要"数据/仓库/线上都最新"时照这个跑，别跳步）：
+
+```bash
+# 1) 数据侧：刷索引 → 刷看板 → 刷画像（各自都只写自己那份产物，互不覆盖）
+python kb-build.py  --data <工作目录> --vault $READING_VAULT
+python gen-dashboard.py --data <工作目录>
+python personalize.py --data <工作目录>
+
+# 2) 工作台：模板新功能同步进运行版（保留自己的口令/昵称）
+python sync-workbench.py --data <工作目录> --apply
+
+# 3) 发布包：必须用 publish-online.js 重建（带 buildStamp + 看板；在读书加 --allow-partial）
+node publish-online.js --data <工作目录> [--allow-partial]
+python test-gate.py  --site <工作目录>/dist-online      # 口令门 7 项
+python test-stamp.py --site <工作目录>/dist-online      # 版本戳 2 项
+
+# 4) 线上：部署 dist-online 这个目录（同目录 = 同链接，覆盖更新）
+#    报「无法连接原发布环境」= 旧沙箱被回收，处置见 wf4 事故 H，别换目录另起链接
+
+# 5) 仓库：安装目录 → 仓库 → 打包回灌 → 推送
+python sync-from-local.py --apply && python build.py && python push-gh.py --apply
+```
+
 ## 🚨 双轨沉淀铁律（P0 · 2026-10-07 事故 G 后新增，违反即事故）
 
 > **事故 G 复盘**：某书跑完八环节并发到线上工作台，却**漏沉淀进 Obsidian 知识库**，用户在 vault 里搜不到。
