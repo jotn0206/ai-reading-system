@@ -2,7 +2,7 @@
 window.READING_DATA = {
   "version": 8,
   "profile": {
-    "name": "",
+    "name": "读者",
     "roles": [],
     "goals": [],
     "interests": [],
