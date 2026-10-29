@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>1年50本书 · AI阅读执行系统</title>
+<title>挑战一年50本书 · AI阅读执行系统</title>
 <style>
   :root{
     --bg:#FAFAFC; --card:#FFFFFF; --ink:#1F2937; --sub:#6B7280; --line:#ECECF1;
@@ -374,6 +374,18 @@
 }
 /* 阅读视图打开时，朗读条抬到阅读视图吸底栏之上，避免重叠 */
 #reader.show ~ #tts-bar{bottom:calc(78px + env(safe-area-inset-bottom))}
+#tts-audio-btn:disabled{opacity:.35;cursor:not-allowed}
+.tts-audio-panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));z-index:91;width:min(440px,92vw);max-height:46vh;overflow:auto;background:#fff;color:#111;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:10px;display:none}
+.tts-audio-panel.show{display:block}
+.tts-audio-panel .ap-h{font-size:12px;font-weight:800;color:#475569;margin:2px 4px 8px}
+.tts-audio-panel .ap-empty{font-size:12px;color:#94a3b8;padding:6px 4px}
+.tts-audio-panel .ap-item{padding:9px 10px;border-radius:9px;font-size:13px;cursor:pointer;color:#0f172a;border:1px solid #eef2f7;margin-bottom:6px;line-height:1.4}
+.tts-audio-panel .ap-item:hover{background:#f1f5f9}
+.tts-audio-panel .ap-item.active{background:linear-gradient(90deg,#fef3c7,#dbeafe);border-color:#fbbf24;font-weight:700}
+.h1-sub{font-size:14px;font-weight:600;opacity:.82;margin-left:8px}
+.book .listen{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(255,255,255,.22);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
+.book .listen:hover{background:rgba(255,255,255,.4)}
+.mh-acts{display:flex;align-items:center;gap:8px}
 /* 朗读高亮：当前段落 */
 .tts-cur{background:linear-gradient(90deg,rgba(245,158,11,.22),rgba(59,130,246,.14)) !important;
   border-radius:8px;box-shadow:-3px 0 0 var(--orange);transition:background .2s}
@@ -532,7 +544,7 @@ textarea.f{line-height:1.7}
 <div id="gate">
   <div class="gate-box">
     <div class="gate-logo">📚</div>
-    <h2 id="gate-title">AI 阅读执行系统</h2>
+    <h2 id="gate-title">挑战一年50本书</h2>
     <p class="gate-sub" id="gate-sub">请输入访问口令</p>
     <input id="gate-input" type="password" placeholder="访问口令" autocomplete="off" spellcheck="false">
     <button onclick="__doGate()">进入</button>
@@ -543,7 +555,7 @@ textarea.f{line-height:1.7}
 <header class="top">
   <div class="top-row">
     <div class="brand">
-      <h1>📚 1年50本书 · AI阅读执行系统</h1>
+      <h1>📚 挑战一年50本书<span class="h1-sub">AI 阅读执行系统</span></h1>
       <p>新书推荐 → 粗读 → 逐章拆解 → 逻辑链 → 重点推荐 → 原子笔记 → 行动清单 → 书评发布，八环闭环，进度可视化</p>
     </div>
     <div class="top-actions">
@@ -616,8 +628,12 @@ textarea.f{line-height:1.7}
   </div>
 </div>
 
+<!-- 预生成高质量语音播放器（edge-tts 神经网络，缺则浏览器回退） -->
+<audio id="tts-audio" preload="none"></audio>
+
 <!-- 朗读悬浮控制条（P2） -->
 <div id="tts-bar">
+  <button data-action="tts-audio-toggle" id="tts-audio-btn" title="高质量语音">🎧</button>
   <button data-action="tts-prev" title="上一段">⏮</button>
   <button data-action="tts-toggle" id="tts-playbtn" title="播放/暂停">▶</button>
   <button data-action="tts-next" title="下一段">⏭</button>
@@ -625,6 +641,8 @@ textarea.f{line-height:1.7}
   <span class="tts-info" id="tts-info">就绪</span>
   <button data-action="tts-stop" title="停止">✕</button>
 </div>
+<!-- 高质量语音面板（点击 🎧 展开，按卡/段播放预生成 mp3） -->
+<div id="tts-audio-panel" class="tts-audio-panel"></div>
 
 <!-- 聚合视图（移动端 Tab 页容器，P0 新增） -->
 <main id="aggview" style="display:none"></main>
@@ -644,7 +662,7 @@ textarea.f{line-height:1.7}
 <script src="data/state.js"></script>
 <script>
 /* =========================================================
-   1年50本书 AI阅读执行系统  —  工作台（P0 数据外置版）
+   挑战一年50本书 AI阅读执行系统  —  工作台（P0 数据外置版）
    数据唯一来源: data/state.js (window.READING_DATA)
    localStorage 仅作运行缓存 + 滚动备份
    设计语言参考「可视化拆书助手」：明亮 / 暖橙→墨蓝渐变 / Bento 卡片
@@ -791,6 +809,7 @@ function renderGrid(){
     html+=`<div class="book" data-action="open-book" data-id="${b.id}">
       <div class="cover" style="background:linear-gradient(120deg,${b.coverColor},${shade(b.coverColor,-18)})">
         <span class="emoji">${b.coverEmoji||'📖'}</span><span class="t">${esc(b.title)}</span>
+        <button class="listen" data-action="listen-book" data-id="${b.id}" title="🎧 听书">🎧</button>
       </div>
       <div class="body">
         <div class="author">${esc(b.author||'未知作者')}</div>
@@ -982,7 +1001,7 @@ function renderModal(){
   $('#modal').innerHTML=`
     <div class="modal-head">
       <div><h2>${esc(b.title)}</h2><div class="sub">${esc(b.author||'')} · 来源：${esc(b.source||'—')} · 入库：${b.addedDate} · 进度 ${bookProgress(b)}%</div></div>
-      <button class="x" data-action="close">✕</button>
+      <div class="mh-acts"><button class="btn btn-ghost" data-action="listen-book-modal" title="🎧 听全书">🎧 听全书</button><button class="x" data-action="close">✕</button></div>
     </div>
     <div class="stepper">${stepper}</div>
     <div id="read-prog"><i></i></div>
@@ -1658,10 +1677,14 @@ const TTS={
   segs:[],idx:-1,playing:false,rate:1.0,supported:('speechSynthesis' in window),
   _keepAlive:null,_hl:null,_onState:null,
   RATES:[0.8,1.0,1.2,1.5,2.0],
+  _audio:null,_audioSegs:[],_audioIdx:-1,_voices:null,
   init(){
+    try{this.rate=parseFloat(localStorage.getItem('tts_rate'))||1.0;}catch(e){}
+    this._audio=document.getElementById('tts-audio');
     if(!this.supported)return;
-    // 部分浏览器 voices 异步加载，先触发一次
-    try{speechSynthesis.getVoices();}catch(e){}
+    try{this._voices=speechSynthesis.getVoices();}catch(e){}
+    try{if('onvoiceschanged' in speechSynthesis)speechSynthesis.onvoiceschanged=()=>{this._voices=speechSynthesis.getVoices();};}catch(e){}
+    this._syncRate();
   },
   /* segs: [{text, el|null}]；el 用于高亮。onState(playing) 同步按钮文案 */
   load(segs,onState){
@@ -1670,6 +1693,7 @@ const TTS={
     this.idx=-1;this._onState=onState||null;
     this._bar(true);
     this._info(this.segs.length?`共 ${this.segs.length} 段，点 ▶ 开始`:'无可读内容');
+    this._syncRate();
   },
   play(){
     if(!this.supported){this._info('当前浏览器不支持朗读');toast('当前浏览器不支持语音朗读');return;}
@@ -1687,6 +1711,7 @@ const TTS={
   },
   stop(clearBar=true){
     if(this.supported){try{speechSynthesis.cancel();}catch(e){}}
+    if(this._audio){try{this._audio.pause();}catch(e){}}
     this.playing=false;this._keepAliveStop();this._clearHL();
     this._syncBtn();
     if(clearBar)this._bar(false);
@@ -1697,7 +1722,7 @@ const TTS={
   cycleRate(){
     const i=(this.RATES.indexOf(this.rate)+1)%this.RATES.length;
     this.rate=this.RATES[i];
-    const b=document.getElementById('tts-rate-btn');if(b)b.textContent=this.rate.toFixed(1)+'×';
+    this._syncRate();
     if(this.playing)this._speak(this.idx);          // 重说当前段以应用新语速
     else this._info(`语速 ${this.rate.toFixed(1)}×`);
   },
@@ -1720,10 +1745,16 @@ const TTS={
     this._keepAliveStart();
   },
   _pickVoice(){
-    try{const vs=speechSynthesis.getVoices();
-      return vs.find(v=>/zh[-_]CN/i.test(v.lang)&&/xiaoxiao|ting|mei|hui|yaoyao|google/i.test(v.name))
-          || vs.find(v=>/zh[-_]CN/i.test(v.lang))||vs.find(v=>/^zh/i.test(v.lang))||null;}catch(e){return null;}
+    try{const vs=this._voices||speechSynthesis.getVoices();if(!vs||!vs.length)return null;
+      const zh=vs.filter(v=>/zh[-_]?CN/i.test(v.lang)||/^zh/i.test(v.lang));
+      const neural=/neural|云|晓|xiaoxiao|yunxi|yunyang|huihui|tingting|yaoyao|kangkang|google|普通话/i;
+      return zh.find(v=>neural.test(v.name))||zh[0]
+        ||vs.find(v=>/xiaoxiao|ting|mei|hui|yaoyao|google|neural/i.test(v.name))
+        ||vs.find(v=>/^zh/i.test(v.lang))||null;}catch(e){return null;}
   },
+  _syncRate(){const b=document.getElementById('tts-rate-btn');if(b)b.textContent=this.rate.toFixed(1)+'×';
+    try{localStorage.setItem('tts_rate',String(this.rate));}catch(e){}
+    if(this._audio)this._audio.playbackRate=this.rate;},
   /* Chrome 桌面端 >15s utterance 自动暂停的已知 bug：周期性 resume 保活 */
   _keepAliveStart(){
     this._keepAliveStop();
@@ -1734,6 +1765,9 @@ const TTS={
     this._clearHL();
     if(seg&&seg.el){seg.el.classList.add('tts-cur');this._hlEl=seg.el;
       seg.el.scrollIntoView({block:'center',behavior:'smooth'});}
+    else if(seg&&seg.chapter){const heads=$$('#rd-inner .rs-t');let hit=null;
+      heads.forEach(h=>{if(!hit&&h.textContent.indexOf(seg.chapter)>=0)hit=h;});
+      if(hit){hit.classList.add('tts-cur');this._hlEl=hit;hit.scrollIntoView({block:'center',behavior:'smooth'});}}
   },
   _clearHL(){if(this._hlEl){this._hlEl.classList.remove('tts-cur');this._hlEl=null;}},
   _bar(show){const b=document.getElementById('tts-bar');if(b)b.classList.toggle('show',!!show);},
@@ -1743,7 +1777,43 @@ const TTS={
     const b1=document.getElementById('tts-playbtn');if(b1)b1.textContent=t;
     const b2=document.getElementById('rd-playbtn');if(b2)b2.textContent=this.playing?'⏸ 暂停':'▶ 朗读';
     if(this._onState)this._onState(this.playing);
-  }
+  },
+  /* 预生成音频：该书在当前范围下可用的音频段 [{file,chapter,text}] */
+  setAudio(audioSegs){
+    this._audioSegs=audioSegs||[];this._audioIdx=-1;
+    const btn=document.getElementById('tts-audio-btn');
+    if(btn){btn.disabled=!this._audioSegs.length;
+      btn.title=this._audioSegs.length?`高质量语音（${this._audioSegs.length} 段）`:'本书暂无预生成语音，已用浏览器朗读';}
+    this._renderAudioPanel();
+  },
+  _renderAudioPanel(){
+    const p=document.getElementById('tts-audio-panel');if(!p)return;
+    if(!this._audioSegs.length){p.innerHTML='<div class="ap-empty">本书暂无预生成高质量语音，已用浏览器朗读。</div>';return;}
+    p.innerHTML='<div class="ap-h">🎧 高质量语音（点击播放）</div>'+this._audioSegs.map((s,i)=>
+      `<div class="ap-item" data-i="${i}">${esc(s.chapter||('第'+(i+1)+'段'))}</div>`).join('');
+    p.querySelectorAll('.ap-item').forEach(el=>el.onclick=()=>{this.playAudioSeg(+el.dataset.i);});
+  },
+  toggleAudioPanel(){
+    const p=document.getElementById('tts-audio-panel');if(!p)return;
+    if(!this._audioSegs.length){toast('本书暂无预生成高质量语音');return;}
+    p.classList.toggle('show');
+  },
+  playAudioSeg(i){
+    if(!this._audio||!this._audioSegs[i])return;
+    this.stop(false);
+    this._audioIdx=i;const seg=this._audioSegs[i];const a=this._audio;
+    a.src=seg.file;a.playbackRate=this.rate;
+    a.onplay=()=>{this._markAudio(i);this._hl({chapter:seg.chapter});this._info(`🎧 ${i+1}/${this._audioSegs.length} ${seg.chapter||''}`);};
+    a.onended=()=>{if(this._audioIdx!==i)return;if(i+1<this._audioSegs.length)this.playAudioSeg(i+1);
+      else this._info('✅ 高质量语音播放完毕');};
+    a.onerror=()=>{this._info('音频加载失败，回退浏览器朗读');this._speakText(seg.text);};
+    try{a.play();}catch(e){this._speakText(seg.text);}
+  },
+  _speakText(text){
+    if(!this.segs.length){this.segs=[{text}];this.idx=-1;}else{this.segs.push({text});this._bar(true);}
+    this._speak(this.segs.length-1);
+  },
+  _markAudio(i){$$('#tts-audio-panel .ap-item').forEach((el,k)=>el.classList.toggle('active',k===i));}
 };
 TTS.init();
 
@@ -1763,6 +1833,7 @@ const Reader={
     this._restoreScroll();
     const secs=this._segs.map(s=>({text:s.text,el:s.el}));
     TTS.load(secs);
+    loadBookAudio(b, this.scope==='book'?null:this.sid).then(a=>TTS.setAudio(a));
     document.body.style.overflow='hidden';
   },
   close(){
@@ -1841,6 +1912,32 @@ function ttsCurrentStage(){
   if(!flat.length){toast('本环节暂无可读内容');return;}
   TTS.load(flat);
   TTS.play();
+  loadBookAudio(b,currentStage).then(a=>TTS.setAudio(a));
+}
+/* 异步加载某书在当前范围下的预生成音频段（来自 data/audio/<书名>/manifest.json） */
+function loadBookAudio(book,sid){
+  return new Promise(res=>{
+    if(!book)return res([]);
+    const base='data/audio/'+encodeURIComponent(book.title)+'/';
+    fetch(base+'manifest.json').then(r=>r.ok?r.json():null).then(m=>{
+      if(!m||!m.blocks)return res([]);
+      const msid=(m.sid!=null)?String(m.sid):null;
+      let blocks=m.blocks;
+      if(sid!=null)blocks=blocks.filter(x=>{const bs=(x.sid!=null)?String(x.sid):msid;return bs==null||bs===String(sid);});
+      res(blocks.map(x=>({file:base+encodeURIComponent(x.file),chapter:x.chapter,text:x.text})));
+    }).catch(()=>res([]));
+  });
+}
+/* 一键听书：打开沉浸阅读视图（全书范围）并自动开始浏览器朗读；若该书有高质量语音，提示点 🎧 */
+function listenBook(id){
+  const b=state.books.find(x=>x.id===id);if(!b)return;
+  $('#overlay').classList.remove('show');
+  Reader.book=b;Reader.scope='book';Reader.sid=1;Reader.render();
+  $('#reader').classList.add('show');Reader._restoreScroll();document.body.style.overflow='hidden';
+  const secs=Reader._segs.map(s=>({text:s.text,el:s.el}));
+  TTS.load(secs);
+  TTS.play();
+  loadBookAudio(b,null).then(a=>{TTS.setAudio(a);if(a.length)toast('本书有高质量语音，点 🎧 播放');});
 }
 
 /* 知识看板：本地/线上都先探测文件在不在，缺了给明确指引而不是 404 */
@@ -1928,6 +2025,10 @@ document.addEventListener('click',e=>{
     if(target)body.scrollTo({top:target.offsetTop-8,behavior:'smooth'});
     return;
   }
+  /* ---- 朗读增强：高质量语音面板 + 一键听书 ---- */
+  if(a==='tts-audio-toggle'){TTS.toggleAudioPanel();return;}
+  if(a==='listen-book'){listenBook(t.dataset.id);return;}
+  if(a==='listen-book-modal'){listenBook(currentBookId);return;}
   /* ---- P2 移动端弹窗吸底操作栏 ---- */
   if(a==='foot-prev'){if(currentStage>1){currentStage--;renderModal();}return;}
   if(a==='foot-next'){if(currentStage<8){currentStage++;renderModal();}return;}

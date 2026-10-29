@@ -24,11 +24,23 @@ from collections import Counter, OrderedDict
 # ---------- 路径默认值 ----------
 # vault 根不写死：优先环境变量 READING_VAULT（本机设一次即可），缺省时报错提示，别猜路径
 DEFAULT_VAULT = os.environ.get("READING_VAULT", "")
-T1_ROOT = "01 Raw Sources/20_书籍原文"
-T2_ROOT = "02 Wiki/12_单书笔记"
-T3_ROOT = "02 Wiki/13_原子笔记(Zettelkasten)"
+T1_ROOT = "raw/20_书籍原文"
+T2_ROOT = "wiki/12_单书笔记"
+T3_ROOT = "wiki/13_原子笔记(Zettelkasten)"
 
-CARD_TYPE_DIR = {"概念卡": "概念卡", "观点卡": "观点卡", "行动卡": "行动卡"}
+# 原子卡八分类（对齐《分类笔记读书法》：观点 / 原理 / 概念术语 / 方法行动 / 技巧 / 案例故事 / 问题 / 金句）
+# 卡 type 取值 -> 落盘目录名；旧三分类（概念卡/观点卡/行动卡）保持向后兼容。
+CARD_TYPE_DIR = {
+    "概念卡": "概念卡", "概念术语卡": "概念卡", "概念术语": "概念卡", "概念": "概念卡",
+    "观点卡": "观点卡", "观点": "观点卡",
+    "行动卡": "行动卡", "方法行动卡": "行动卡", "方法行动": "行动卡", "行动": "行动卡", "方法": "行动卡",
+    "原理卡": "原理卡", "原理": "原理卡",
+    "技巧卡": "技巧卡", "技巧": "技巧卡",
+    "案例卡": "案例卡", "案例故事卡": "案例卡", "案例故事": "案例卡", "案例": "案例卡",
+    "问题卡": "问题卡", "问题": "问题卡",
+    "金句卡": "金句卡", "金句": "金句卡",
+}
+ATOMIC_TYPES = ["概念卡", "观点卡", "行动卡", "原理卡", "技巧卡", "案例卡", "问题卡", "金句卡"]
 
 
 def load_state(path):
@@ -185,6 +197,7 @@ def build_deepcards(book, vault, atomic_by_chapter):
         personal = ch.get("personal", "")
         quotes = ch.get("quotes", "")
         cases = ch.get("cases", "")
+        branch = ch.get("branchKnowledge", "")  # 枝叶型知识：AI 易漏的分支信息
         dc = parse_deepcard(ch.get("deepCard", ""))
         shi = dc.get("事", summary)
         li = dc.get("理", "")
@@ -228,6 +241,9 @@ def build_deepcards(book, vault, atomic_by_chapter):
               "## 本章案例",
               "- %s" % cases if cases else "- （无）",
               "",
+              "## 枝叶型知识（AI 易漏的分支信息）",
+              "- %s" % branch if branch else "- （本次未单独 harvest，可在工作台 stage3 给本章补录 branchKnowledge）",
+              "",
               "## 关联原子卡",
               rel_md,
               "",
@@ -251,6 +267,21 @@ def parse_links(links_str):
     return out
 
 
+def ensure_atomic_dirs(vault):
+    """保证 8 个分类目录存在，各带一个导航 README（首次建立，已存在则跳过）。"""
+    base = os.path.join(vault, T3_ROOT)
+    os.makedirs(base, exist_ok=True)
+    for d in ATOMIC_TYPES:
+        p = os.path.join(base, d)
+        os.makedirs(p, exist_ok=True)
+        readme = os.path.join(p, "README.md")
+        if not os.path.exists(readme):
+            open(readme, "w", encoding="utf-8").write(
+                "---\ntitle: %s\ntype: atomic-type\ntags: [\"原子笔记\", \"Zettelkasten\"]\n---\n\n"
+                "# %s\n\n本目录存放「%s」类原子笔记，按 Zettelkasten 法独立成卡，便于跨书检索与互链。\n"
+                "> 八分类对齐《分类笔记读书法》：观点 / 原理 / 概念术语 / 方法行动 / 技巧 / 案例故事 / 问题 / 金句。\n" % (d, d, d))
+
+
 def build_atomic(book, vault):
     title = book["title"]
     s6 = book.get("stages", {}).get("6", {}).get("data", {})
@@ -258,15 +289,15 @@ def build_atomic(book, vault):
     made = []
     for c in cards:
         cid = norm_card_id(c.get("id", "CARD"))
-        ctype = c.get("type", "概念卡")
+        ctype = c.get("type") or "概念卡"
         concept = c.get("concept", "")
-        one = c.get("oneLiner", "")
-        points = c.get("points", "")
+        one = c.get("oneLiner", "") or c.get("content", "")
+        points = c.get("points", "") or c.get("content", "")
         source = c.get("source", "")
         thought = c.get("myThought", "")
         links = parse_links(c.get("links", ""))
         tags = norm_tags(c.get("tags"))
-        d = CARD_TYPE_DIR.get(ctype, "概念卡")
+        d = CARD_TYPE_DIR.get(ctype, "概念卡")  # 归一到 8 个目录之一
         out_dir = os.path.join(vault, T3_ROOT, d)
         os.makedirs(out_dir, exist_ok=True)
         fn = "%s.md" % cid
@@ -276,7 +307,7 @@ def build_atomic(book, vault):
         md = ["---",
               "title: %s %s" % (cid, concept),
               "type: zettel",
-              "cardType: %s" % ctype,
+              "cardType: %s" % d,
               "book: %s" % title,
               "concept: %s" % concept,
               "tags: %s" % tags,
@@ -290,9 +321,9 @@ def build_atomic(book, vault):
               "related: [%s]" % ", ".join(rel),
               "---",
               "# 🗂️ %s" % concept,
-              "> 归入 [[../README.md|原子笔记]]", "",
+              "> 归入 [[../README.md|原子笔记]] · 分类：%s" % d, "",
               "**结论先行**：%s" % one, "",
-              "> **%s** · Zettelkasten 原子笔记 · ID %s · 来源书 [[%s - 主页]]" % (ctype, cid, title), "",
+              "> **%s** · Zettelkasten 原子笔记 · ID %s · 来源书 [[%s - 主页]]" % (d, cid, title), "",
               "> [!summary] 一句话总结",
               "> %s" % one, "",
               "## 要点",
@@ -326,13 +357,25 @@ def update_home(book, vault, n_chapters, deep_made, atomic_made):
                "全书原文见 [[%s-原文索引|📚 %s 全书原文（%d 章）]]" % (title, title, n_chapters),
                s)
 
-    # 原子笔记分类：列出独立卡
-    atomic_lines = "概念卡×%d · 观点卡×%d · 行动卡×%d（独立卡片见 [[../13_原子笔记(Zettelkasten)/README|🗂️ 原子笔记库]]）" % (
-        sum(1 for _, t, _ in atomic_made if t == "概念卡"),
-        sum(1 for _, t, _ in atomic_made if t == "观点卡"),
-        sum(1 for _, t, _ in atomic_made if t == "行动卡"),
-    )
-    s = re.sub(r"概念卡×\d+ · 观点卡×\d+ · 行动卡×\d+（存于[^\n]*）", atomic_lines, s)
+    # 原子笔记分类（八分类）：列出独立卡
+    cnt = Counter(t for _, t, _ in atomic_made)
+    cnt_line = " · ".join("%s×%d" % (k, cnt.get(k, 0)) for k in ATOMIC_TYPES)
+    atomic_lines = cnt_line + "（独立卡片见 [[../13_原子笔记(Zettelkasten)/README|🗂️ 原子笔记库]]）"
+    s = re.sub(r"[^-\n]*独立卡片见[^\n]*", atomic_lines, s)
+
+    # 人工复核 + 枝叶型知识 状态块
+    reviewed = book.get("stages", {}).get("8", {}).get("data", {}).get("humanReviewed")
+    review_block = "\n## 阅读复核（人工快速过原文）\n"
+    if reviewed:
+        review_block += "- ✅ 已人工快速过原文 + harvest 枝叶型知识（stage8.humanReviewed=true），可发布。\n"
+    else:
+        review_block += "- ⏳ 待人工快速过原文 + harvest 枝叶型知识：stage8.humanReviewed 置 true 后方可发布（防「假完成」）。\n"
+    review_block += "- 枝叶型知识：逐章深化卡已留「枝叶型知识」小节，AI 易漏的分支信息在此 harvest。\n"
+    if "## 阅读复核" not in s:
+        if "## 知识图谱" in s:
+            s = s.replace("## 知识图谱", review_block + "\n## 知识图谱")
+        else:
+            s += review_block
 
     # 追加深化卡片小节（若不存在）
     if "## 深化卡片" not in s:
@@ -400,6 +443,7 @@ def main():
                          "READING_VAULT（例如 Obsidian 库根目录）")
 
     state = load_state(args.data)
+    ensure_atomic_dirs(args.vault)  # 保证八分类目录 + 导航 README 就绪
     targets = []
     if args.all:
         targets = state["books"]

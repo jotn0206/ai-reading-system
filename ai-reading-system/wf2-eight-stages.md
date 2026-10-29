@@ -24,12 +24,12 @@
 |---|---|---|
 | 1 新书推荐 | `stages.1.data.reason` 等 | 推荐理由说明"为什么是现在读它"，不写套话 |
 | 2 粗读 | `stages.2.data.*`：oneLiner（一句话概括）/ coreQuestion / authorBackground / authorWorks / expertReviews（10条）/ hotReviews（10条）/ concepts / graph / contrast / insights / sixDims / suitableFor / notSuitableFor / recommendLevel | 评价与热评**必须真实有来源，不许编造**，查不到宁可少放；知识图谱 = 书籍节点1个 + 概念节点8-15个 + 关系边，节点命名与环节6原子卡一致 |
-| 3 逐章拆解 | `stages.3.data.chapters[]`：title / breakdown（拆解）/ quotes（金句1-3）/ cases（案例1-3）/ pages | 金句**逐字**对照原文；案例不编造；页码当场标（PDF 全文有 `[第 N 页]` 标记可查；EPUB 无页码，如实标注"无页码"，收尾管线会如实报告） |
-| 4 全书逻辑链 | `stages.4.data.chain[]` | 逻辑图与章节实际结构一致，不是套路模板 |
+| 3 逐章拆解 | `stages.3.data.chapters[]`：title / breakdown（拆解）/ quotes（金句1-3）/ cases（案例1-3）/ pages / **branchKnowledge（枝叶型知识）** | 金句**逐字**对照原文；案例不编造；页码当场标（PDF 全文有 `[第 N 页]` 标记可查；EPUB 无页码，如实标注"无页码"，收尾管线会如实报告）。**branchKnowledge**：记录本章"主干之外的分支信息"（如某个工具、某段历史、某个反例）——AI 逐章提取易漏，须人扫原文时特意 harvest（借鉴《分类笔记读书法》"枝叶型知识"） |
+| 4 全书逻辑链 | `stages.4.data.chain[]` | 逻辑图与章节实际结构一致，不是套路模板；跨章概念（第三章提出、第十章展开）须标注跨度，防 AI 丢连接 |
 | 5 重点推荐 | `stages.5.data.note` + 章节重点标记 | **必须结合用户身份画像**（profile 的 roles/goals/interests），生成针对性阅读建议；画像为空则先引导用户填写 |
-| 6 原子笔记 | `stages.6.data.cards[]` ≥10张 | 每卡三分类之一（概念/行动/观点），结构完整：卡片名/一句话总结/要点/来源/**我的思考**（结合用户身份与项目，追问用户）。**ID 命名强制 `YYYYMMDD-NNN`**（创建日 8 位 + 3 位序号，全局唯一、带时间元素），禁止书名缩写码（如 JCSX-001、FCL-003）；跨卡关联用该 id |
+| 6 原子笔记 | `stages.6.data.cards[]` ≥10张 | **八分类之一**（对齐《分类笔记读书法》）：观点 / 原理 / 概念术语 / 方法行动 / 技巧 / 案例故事 / 问题 / 金句（落盘目录同名）。结构完整：卡片名/一句话总结/要点/来源/**我的思考**（结合用户身份与项目，追问用户）。**ID 命名强制 `YYYYMMDD-NNN`**（创建日 8 位 + 3 位序号，全局唯一、带时间元素），禁止书名缩写码（如 JCSX-001、FCL-003）；跨卡关联用该 id |
 | 7 行动清单 | `stages.7.data.actions[]` | 每条有层级（layer）+ verify（怎么验证做了） |
-| 8 书评与发布 | `stages.8.data.draft` | 初稿用环节2/3/6成果做素材 + 用户个人理解；发布走工作台五道网关，**发布前必须用户确认** |
+| 8 书评与发布 | `stages.8.data.draft` + **`stages.8.data.humanReviewed`（人工复核闸门）** | 初稿用环节2/3/6成果做素材 + 用户个人理解；**发布前必须人工快速过原文 + harvest 枝叶型知识，并把 `humanReviewed` 置 true**——这是 WF3 发布网关的硬条件（加 `--require-review` 时未复核禁止发布）。发布走工作台五道网关，**发布前必须用户确认** |
 
 ## 生成内容的三层调整机制（用户不满意时）
 

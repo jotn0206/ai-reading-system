@@ -37,6 +37,7 @@ node <技能目录>/pipeline.js <书名> --data .
 - [ ] dry-run 报告：金句命中 100%，复核清单已逐条人工确认
 - [ ] 真实执行三步全绿
 - [ ] 页码抽查：金句/案例的 （P页） 与原文位置一致（EPUB 来源则确认"无页码"如实标注）
+- [ ] **人工复核闸门**：已跑满 8 环节的书，`stages.8.data.humanReviewed === true`（人工快速过原文 + harvest 枝叶型知识完成）；发布时 `publish-online.js` 会警告未复核的书，`--require-review` 则硬拦截
 
 ## 踩坑
 

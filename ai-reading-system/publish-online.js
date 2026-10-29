@@ -34,6 +34,22 @@ if (!fs.existsSync(statePath)) {
 }
 const state = fs.readFileSync(statePath, 'utf8');
 
+/* —— 发布前自动备份（事故 J/K 固化：防止发布/部署工具吞掉工作目录）——
+   每次发布先把整个 WORKDIR 拷到 D:/reading-backups/<时间戳>，与 vault、部署目录物理隔离。 */
+const BACKUP_ROOT = 'D:/reading-backups';
+function backupWorkdir() {
+  try {
+    if (!fs.existsSync(BACKUP_ROOT)) fs.mkdirSync(BACKUP_ROOT, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+    const dest = path.join(BACKUP_ROOT, 'reading-data-' + ts);
+    fs.cpSync(WORKDIR, dest, { recursive: true });
+    console.log('发布前自动备份 ✅ -> ' + dest);
+  } catch (e) {
+    console.error('⚠️  备份失败（不阻断发布）：' + e.message);
+  }
+}
+backupWorkdir();
+
 let s;
 try {
   s = JSON.parse(state.replace(/^[\s\S]*?window\.READING_DATA\s*=\s*/, '').replace(/;\s*$/, ''));
@@ -83,6 +99,45 @@ if (bad) {
   console.log('⚠️  --allow-partial 已指定：' + bad + ' 本在读书（环节<8）照常进包');
 }
 
+/* —— 人工复核网关（事故 K / 借鉴"三石大叔"文章）——
+   已跑满 8 环节的书，发布前必须 stage8.data.humanReviewed===true
+   （人工快速过原文 + harvest 枝叶型知识完成）。默认仅警告；加 --require-review 则硬拦截。 */
+const unreviewed = [];
+books.forEach(b => {
+  const n = Object.keys(b.stages || {}).length;
+  const h = b.stages && b.stages['8'] && b.stages['8'].data && b.stages['8'].data.humanReviewed;
+  if (n === 8 && !h) unreviewed.push(b.title || '(无标题)');
+});
+if (unreviewed.length) {
+  console.log('⚠️  以下 ' + unreviewed.length + ' 本已 8 环节但「未人工复核」（stage8.humanReviewed=false）：');
+  unreviewed.forEach(t => console.log('     · ' + t));
+  console.log('    人工快速过原文 + harvest 枝叶型知识后，在工作台把 stage8.humanReviewed 置 true 再发。');
+  if (process.argv.includes('--require-review')) {
+    console.error('\n❌ --require-review 已开：未人工复核的书禁止发布。');
+    process.exit(1);
+  }
+}
+
+/* —— 环节进度字段 status 注入（事故 J 固化）——
+   工作台按 stages[sid].status==='done' 统计完成环节；阅读系统数据只用 done/data，
+   缺 status 会让所有书显示"环节0"（假象，内容其实都在）。这里数据非空即视为 done，
+   写包时统一补全，彻底根治，不依赖临时补丁脚本。 */
+function ensureStatus(s) {
+  (s.books || []).forEach(b => {
+    const stages = b.stages || {};
+    Object.keys(stages).forEach(k => {
+      const st = stages[k];
+      if (st && typeof st === 'object') {
+        const hasData = st.data && Object.keys(st.data).length > 0;
+        if (hasData && st.status !== 'done') st.status = 'done';
+        if (!hasData && !st.status) st.status = 'todo';
+      }
+    });
+  });
+  return s;
+}
+s = ensureStatus(s);
+
 /* —— 落盘（注入发布版本戳 buildStamp）——
    前端凭它判断"线上数据已更新"，让老访客浏览器里的旧 localStorage 缓存自动重播种。
    只用内容哈希（不含时间）：内容没变就不打扰访客在线上做的勾选/批注。 */
@@ -95,7 +150,17 @@ const stateOut = '/* AI 阅读执行系统 · 发布包（自动生成，勿手�
   + 'window.READING_DATA = ' + JSON.stringify(Object.assign({}, s, { buildStamp: stamp })) + ';\n';
 console.log('发布版本戳 buildStamp:', stamp, '（数据一旦变化，访客浏览器会自动重读）');
 fs.mkdirSync(path.join(DIST, 'data'), { recursive: true });
-fs.writeFileSync(path.join(DIST, 'index.html'), src);
+/* —— 防浏览器强缓存（事故 J 固化）——
+   index.html 里 <script src="data/state.js"> 改为带 ?v=buildStamp，
+   内容变了戳就变，浏览器必重新拉取，老访客不再卡在旧数据。 */
+const idxOut = src.replace(
+  /<script src="data\/state\.js(?:\?[^"]*)?"><\/script>/,
+  '<script src="data/state.js?v=' + stamp + '"></script>'
+);
+if (idxOut === src) {
+  console.error('⚠️  未在 index.html 找到 state.js 引用，?v 防缓存未注入');
+}
+fs.writeFileSync(path.join(DIST, 'index.html'), idxOut);
 fs.writeFileSync(path.join(DIST, 'data', 'state.js'), stateOut);
 
 /* —— 可选：知识看板（WF5 产物）存在则一起进包 —— */
@@ -106,6 +171,17 @@ if (fs.existsSync(kbSrc)) {
   console.log('知识看板进包 ✅  data/kb/dashboard.html');
 } else {
   console.log('ℹ️  未找到 data/kb/dashboard.html（gen-dashboard.py 生成），线上点「📈 知识看板」会提示未生成');
+}
+/* —— 预生成语音（WF6 产物）存在则一起进包 —— */
+const audioSrc=path.join(WORKDIR,'data','audio');
+if(fs.existsSync(audioSrc)){
+  const audioDst=path.join(DIST,'data','audio');
+  fs.mkdirSync(audioDst,{recursive:true});
+  fs.cpSync(audioSrc,audioDst,{recursive:true});
+  let n=0;(function walk(d){fs.readdirSync(d).forEach(f=>{const p=path.join(d,f);if(fs.statSync(p).isDirectory())walk(p);else n++;});})(audioDst);
+  console.log('高质量语音进包 ✅  data/audio/ ('+n+' 个文件)');
+}else{
+  console.log('ℹ️  未找到 data/audio/（tts.py 生成），线上播放将回退浏览器朗读');
 }
 
 /* —— 复核发布包 —— */

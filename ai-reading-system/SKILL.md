@@ -1,8 +1,8 @@
 ---
 name: ai-reading-system
-version: 1.8.2
-display_name: 一年50本书 · AI阅读执行系统
-display_name_en: AI Reading System · 50 Books a Year
+version: 1.9.0
+display_name: 挑战一年50本书 · AI阅读执行系统
+display_name_en: Challenge: 50 Books a Year · AI Reading
 description: >
   AI 阅读执行系统——把一本书跑完 8 个环节（新书推荐→粗读→逐章拆解→逻辑链→重点推荐→原子笔记→行动清单→书评），
   全部产出结构化落盘，带金句逐字校验网关与真实页码注入，并生成可发布的书评；可选的在线工作台能把进度挂到公网链接。
@@ -39,7 +39,7 @@ category: education
 author: （填写作者署名）
 ---
 
-# 一年50本书 · AI 阅读执行系统
+# 挑战一年50本书 · AI 阅读执行系统
 
 把"读一本书"变成结构化产出：8 个环节、金句逐字校验、真实页码、可发布书评。本地工作台（index.html）可视化追踪进度，数据存用户自己的目录。
 
@@ -211,12 +211,22 @@ python test-gate.py --site <发布包目录>
 # 2.5 版本戳回归（2 项：旧缓存能被重播种 + 戳没变时不白刷访客缓存）
 python test-stamp.py --site <发布包目录>
 
-# 3. 部署（静态托管，无后端无账号）：把发布包目录整个上传到**唯一**链接
+# 3. 部署（静态托管，无后端无账号）：
+#    ⚠️ 绝不直接部署 <工作目录> 本身——部署工具会"消费"本地目录，曾把整个 reading-data 带走（事故 J/K）。
+#    先复制到与 vault 物理隔离的临时目录，再部署该副本：
+python -c "import shutil,os; os.makedirs(r'D:/tmp/reading-deploy',exist_ok=True); shutil.rmtree(r'D:/tmp/reading-deploy'); shutil.copytree(r'<发布包目录>', r'D:/tmp/reading-deploy')"
+#    然后部署 D:/tmp/reading-deploy 到**唯一**链接
 ```
 
-`--title` 只检查某一本书的环节完整性（默认检查全部，环节不满 8 个会拦截发布）。
+`--title` 只检查某一本书的环节完整性（默认检查全部，环节不满 8 个会拦截发布）。在读书（环节<8）照常发加 `--allow-partial`。
 
 **数据更新后必跑第 2.5 步**：只更新 state.js 再发布，老访客浏览器里可能仍显示旧数据（原因见「事故 F」）。`publish-online.js` 每次会打印一个新的 `buildStamp`，前端凭它自动重播种——所以**发布包必须用 `publish-online.js` 生成，不能手工拷 state.js**。
+
+**发布前自动备份（事故 J/K 固化）**：`publish-online.js` 每次运行先把整个 `<工作目录>` 复制到 `D:/reading-backups/<时间戳>`（与 vault/部署目录物理隔离），防发布/部署工具吞目录。它同时固化两道补丁，无需再跑临时脚本：① 给每环节补 `status`（数据非空即 done，根治"环节0"假象）；② 给 `index.html` 的 `state.js` 引用加 `?v=buildStamp`（根治浏览器强缓存）。
+
+**人工复核闸门（借鉴"三石大叔"文章）**：已 8 环节的书，`stages.8.data.humanReviewed` 须为 true 才算过"人工快速过原文 + harvest 枝叶型知识"；`publish-online.js` 会警告未复核的书，`--require-review` 则硬拦截。
+
+**回收沙箱导致 re-deploy 被拒**：跨会话/隔天旧沙箱会被回收，工具报"无法连接原发布环境"并停止（为不换链接）。处置：在「设置—数据管理—应用」移除那个僵尸应用 → 重试部署（建新沙箱，链接可能刷新，需告知用户）。
 
 ### WF5 本地知识操作系统（沉淀 → 检索 → 看板）→ 读 @wf5-knowledge-os.md
 
@@ -340,6 +350,19 @@ html[data-locked] #gate{display:flex}
 > **原子卡 ID 约定（2026-10-07 补订，已执行）**：所有原子卡 ID 一律 `YYYYMMDD-NNN`（创建日 8 位 + 3 位序号，全局唯一、带时间元素），与 `13_原子笔记(Zettelkasten)/` 库内其他书一致。`sync-vault.py` 的 `parse_links` 正则已收紧为 `\d{8}-[0-9]{1,3}`、`build_atomic` 经 `norm_card_id` 校验——**书名缩写码（JCSX-001、FCL-003 等）不再识别也不再生成**。《韭菜修行记》原 12 张 `JCSX-NNN` 卡已于本次迁移为 `20261007-NNN`：真相源 `state.js`/每书 json、单书笔记概览与深化卡、线上 `dist-online` 镜像、12 张独立 T3 卡一并改名，旧 `JCSX-NNN.md` 移入 `.trash/jcsx-dupes/` 待清理。
 
 > **教训：vault 沉淀不是"生成几个 md 就行"，它有三处约定俗成的落点（原文章节 / 单书笔记+深化卡 / 原子卡单卡）。脚本必须逐一对齐范本，绝不能用"合并文件"偷懒替代"拆分落点"。**
+
+## 事故 K：发布补丁只活在临时脚本里，重跑官方构建就丢（2026-10-13 复盘）
+
+现象：借鉴三石大叔《AI 公司在烧书，我们还需要自己读书吗？》一文，给系统做产品优化，发现两个隐藏雷：① 之前"事故 J"修的 `status` 注入与 `?v=buildStamp` 防缓存，只写在临时的 `fix-build.py` 里、从未固化进正典 `publish-online.js`；② 该临时脚本还丢了。结果只要重跑官方 `publish-online.js`，"环节0"和强缓存两个老 bug 立刻复活。
+
+根因：发布补丁（防回归）没有写进**每次发布都会走的唯一构建入口** `publish-online.js`，而是依赖一个会丢失的临时脚本——违反"凡修复必固化进主干"的铁律。
+
+优化（已落地，全部写进 `publish-online.js` / `sync-vault.py` / 文档）：
+1. **#1 原子卡八分类**：对齐《分类笔记读书法》——观点 / 原理 / 概念术语 / 方法行动 / 技巧 / 案例故事 / 问题 / 金句。`sync-vault.py` 的 `CARD_TYPE_DIR` 扩到 8 类（旧三分类向后兼容），`13_原子笔记(Zettelkasten)/` 下自动建 8 个分类目录 + 导航 README；`wf2` 环节6 质量门改为八分类；`wf3` 验收清单同步。
+2. **#3 人工快速过原文 + 枝叶型知识 harvest**：① `wf2` 环节3 新增 `branchKnowledge`（枝叶型知识）字段、环节8 新增 `humanReviewed`（人工复核闸门）字段；② `sync-vault.py` 深化卡新增「枝叶型知识」小节、主页新增「阅读复核」状态块；③ `publish-online.js` 新增人工复核网关（警告未复核书，`--require-review` 硬拦截）。
+3. **#11 发布前自动备份 + 防回归固化**：`publish-online.js` 每次运行先把整个 `<工作目录>` 复制到 `D:/reading-backups/<时间戳>`（与 vault/部署目录物理隔离，防发布/部署工具吞目录）；同时把"补 `status`"（根治环节0）和"加 `?v=buildStamp`"（根治强缓存）固化进构建流程，不再依赖临时脚本。
+
+> **教训：任何"防回归"补丁必须写进每次都会执行的构建/发布入口，绝不能只活在临时脚本里。临时脚本会丢，官方重建会把它覆盖掉——bug 就会复活。**
 
 ## 踩坑（test-gate.py）
 - **Playwright 的 chromium 常常没下载** → `executable_path` 指本机 Chrome（`C:\Program Files\Google\Chrome\Application\chrome.exe`），不存在则回退 Edge；也可用环境变量 `CHROME_PATH`。

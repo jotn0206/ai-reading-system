@@ -4,16 +4,23 @@
       环节8流程卡 / 吸底操作栏 / 阅读进度条
 用法: python tools/test-reader.py
 """
-import os, sys, threading, functools
+import os, sys, threading, functools, argparse, tempfile, shutil
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from playwright.sync_api import sync_playwright
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.abspath(__file__))
+ap = argparse.ArgumentParser()
+ap.add_argument('--site', default=os.path.join(ROOT, 'dist-online'))
+args = ap.parse_args()
+SRC = os.path.abspath(args.site)
+tmp = tempfile.mkdtemp(prefix='tr-')
+testdir = os.path.join(tmp, 'site')
+shutil.copytree(SRC, testdir)
 CHROME = os.environ.get('CHROME_PATH') or r'C:\Program Files\Google\Chrome\Application\chrome.exe'
 if not os.path.exists(CHROME):
     CHROME = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 
-handler = functools.partial(SimpleHTTPRequestHandler, directory=ROOT)
+handler = functools.partial(SimpleHTTPRequestHandler, directory=testdir)
 srv = ThreadingHTTPServer(('127.0.0.1', 0), handler)
 port = srv.server_address[1]
 threading.Thread(target=srv.serve_forever, daemon=True).start()
